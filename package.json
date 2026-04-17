@@ -1,0 +1,23 @@
+{
+  "name": "educational",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter @educational/api dev\" \"pnpm --filter @educational/web dev\"",
+    "build": "pnpm --filter @educational/api build && pnpm --filter @educational/web build",
+    "build:api": "pnpm --filter @educational/api build",
+    "build:web": "pnpm --filter @educational/web build",
+    "start:api": "pnpm --filter @educational/api start",
+    "start:web": "pnpm --filter @educational/web start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "prettier": "^3.2.0",
+    "typescript": "^5.4.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

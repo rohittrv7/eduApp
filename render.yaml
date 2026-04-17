@@ -1,0 +1,91 @@
+services:
+  - type: web
+    name: educational-api
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: apps/api
+    buildCommand: npm install -g pnpm@9.0.0 && cd /opt/render/project/src && pnpm install --frozen-lockfile && pnpm --filter @educational/api build
+    startCommand: node dist/main.js
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      # ── Set these in the Render dashboard ──
+      - key: FRONTEND_URL
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      # Upstash Redis — use the full rediss:// URL from Upstash dashboard
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        sync: false
+      - key: STORAGE_PROVIDER
+        value: imagekit
+      - key: IMAGEKIT_PUBLIC_KEY
+        sync: false
+      - key: IMAGEKIT_PRIVATE_KEY
+        sync: false
+      - key: IMAGEKIT_URL_ENDPOINT
+        sync: false
+      - key: OTP_PROVIDER
+        value: email
+      - key: LOGIN_IDENTIFIER
+        value: email
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FCM_PROJECT_ID
+        sync: false
+      - key: FCM_PRIVATE_KEY
+        sync: false
+      - key: FCM_CLIENT_EMAIL
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: BOOTSTRAP_SECRET
+        sync: false
+      - key: VIDEO_PROVIDER
+        value: youtube
+      - key: DOWNLOAD_TOKEN_SECRET
+        sync: false

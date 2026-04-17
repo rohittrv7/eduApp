@@ -1,0 +1,97 @@
+import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
+import configuration from './config/configuration';
+import { validationSchema } from './config/validation.schema';
+import { RedisModule } from './common/redis/redis.module';
+import { StorageModule } from './common/storage/storage.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { ContentModule } from './modules/content/content.module';
+import { BatchesModule } from './modules/batches/batches.module';
+import { VideosModule } from './modules/videos/videos.module';
+import { StudyMaterialsModule } from './modules/study-materials/study-materials.module';
+import { LiveClassesModule } from './modules/live-classes/live-classes.module';
+import { QuizzesModule } from './modules/quizzes/quizzes.module';
+import { TestSeriesModule } from './modules/test-series/test-series.module';
+import { LeaderboardModule } from './modules/leaderboard/leaderboard.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { SocketModule } from './modules/socket/socket.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { CertificatesModule } from './modules/certificates/certificates.module';
+import { DoubtsModule } from './modules/doubts/doubts.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
+import { JwtStrategy } from './common/strategies/jwt.strategy';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [configuration],
+      validationSchema,
+    }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 60 seconds in ms
+        limit: 100,
+      },
+    ]),
+    ScheduleModule.forRoot(),
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get<string>('database.host'),
+        port: config.get<number>('database.port'),
+        username: config.get<string>('database.username'),
+        password: config.get<string>('database.password'),
+        database: config.get<string>('database.name'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        migrations: [__dirname + '/migrations/*{.ts,.js}'],
+        synchronize: true, // auto-create tables from entities (safe for dev)
+        poolSize: 10,
+        ssl: { rejectUnauthorized: false }, // Supabase always needs SSL
+      }),
+    }),
+    RedisModule,
+    StorageModule,
+    AuthModule,
+    UsersModule,
+    ContentModule,
+    BatchesModule,
+    VideosModule,
+    StudyMaterialsModule,
+    LiveClassesModule,
+    QuizzesModule,
+    TestSeriesModule,
+    LeaderboardModule,
+    PaymentsModule,
+    SocketModule,
+    NotificationsModule,
+    AdminModule,
+    SettingsModule,
+    CertificatesModule,
+    DoubtsModule,
+    AnnouncementsModule,
+  ],
+  controllers: [],
+  providers: [
+    JwtStrategy,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
+})
+export class AppModule {}

@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API
+        run: pnpm --filter @educational/api build
+
+      - name: Build Web
+        run: pnpm --filter @educational/web build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+          NEXT_PUBLIC_SOCKET_URL: http://localhost:3001
+          NEXT_PUBLIC_LOGIN_IDENTIFIER: email
+          NEXT_PUBLIC_VIDEO_PROVIDER: youtube
+          NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT: https://ik.imagekit.io/placeholder
+          NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY: placeholder
+          NEXT_PUBLIC_RAZORPAY_KEY_ID: placeholder
+          NEXT_PUBLIC_FIREBASE_API_KEY: placeholder
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: placeholder.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: placeholder
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "000000000000"
+          NEXT_PUBLIC_FIREBASE_APP_ID: "1:000000000000:web:placeholder"
+          NEXT_PUBLIC_FIREBASE_VAPID_KEY: placeholder
+
+      - name: Test API
+        run: pnpm --filter @educational/api test
+        env:
+          NODE_ENV: test
+          JWT_ACCESS_SECRET: test-access-secret-32-chars-minimum
+          JWT_REFRESH_SECRET: test-refresh-secret-32-chars-minimum
+          JWT_ACCESS_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+
+      - name: Test Web
+        run: pnpm --filter @educational/web test

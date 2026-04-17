@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Environment files — NEVER commit real secrets
+.env
+.env.local
+.env.production
+.env.staging
+# Keep .env.example and .env.production.example (they have no real secrets)
+!.env.example
+!.env.production.example
+
+# Turbo
+.turbo/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+.kiro
+.env.example
+.env.production.example
+# Test coverage
+coverage/
