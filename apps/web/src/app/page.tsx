@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Star, Users, BookOpen, Clock } from 'lucide-react';
 import { BatchCard } from '@/components/ui/BatchCard';
+export const dynamic = 'force-dynamic';
 
 interface Batch {
   id: string;
@@ -19,7 +20,7 @@ async function getFeaturedBatches(): Promise<Batch[]> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
     const res = await fetch(`${apiUrl}/batches?featured=true`, {
-      next: { revalidate: 300 },
+      cache: 'no-store',
     });
     if (!res.ok) return [];
     const data = await res.json();
