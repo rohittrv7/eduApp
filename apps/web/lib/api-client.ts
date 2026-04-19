@@ -9,8 +9,9 @@ export const tokenStorage = {
   setAccess: (t: string) => {
     if (typeof window === 'undefined') return;
     localStorage.setItem(TOKEN_KEY, t);
-    // Also set as cookie so Next.js middleware can read it for route protection
-    document.cookie = `access_token=${t}; path=/; max-age=${15 * 60}; SameSite=Lax`;
+    // Cookie for Next.js middleware — 7 days so page reloads don't lose auth
+    // Middleware reads this for route protection; API calls use Authorization header
+    document.cookie = `access_token=${t}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
   },
   setRefresh: (t: string) => {
     if (typeof window === 'undefined') return;

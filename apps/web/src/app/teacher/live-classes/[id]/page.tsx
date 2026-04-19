@@ -7,8 +7,8 @@ import { ArrowLeft, Radio, Calendar, Clock, Users, Pencil, Check, X, Send, Pin }
 import { baseApi } from '@/store/api';
 import { useDispatch } from 'react-redux';
 import { io, Socket } from 'socket.io-client';
+import apiClient from '@/../lib/api-client';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
 
 interface LiveClassDetail {
@@ -83,12 +83,10 @@ export default function TeacherManageLiveClassPage() {
 
   async function fetchClass() {
     try {
-      const res = await fetch(`${API}/live-classes/${id}`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setCls(data);
-        setNewScheduledAt(toDatetimeLocal(data.scheduled_at));
-      }
+      const res = await apiClient.get(`/live-classes/${id}`);
+      const data = res.data;
+      setCls(data);
+      setNewScheduledAt(toDatetimeLocal(data.scheduled_at));
     } finally {
       setLoading(false);
     }
@@ -128,15 +126,11 @@ export default function TeacherManageLiveClassPage() {
     if (!cls || cls.status !== 'active') return;
     const poll = async () => {
       try {
-        const res = await fetch(`${API}/live-classes/${id}/viewer-count`, { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          // Use socket count if > 0, else use API count
-          setViewerCount((prev) => {
-            const apiCount = data.count ?? data.viewer_count ?? 0;
-            return prev > 0 ? prev : apiCount;
-          });
-        }
+        const res = await apiClient.get(`/live-classes/${id}/viewer-count`);
+        setViewerCount((prev) => {
+          const apiCount = res.data?.count ?? res.data?.viewer_count ?? 0;
+          return prev > 0 ? prev : apiCount;
+        });
       } catch { /* ignore */ }
     };
     poll();
@@ -160,18 +154,12 @@ export default function TeacherManageLiveClassPage() {
     setActionLoading(true);
     setMsg(null);
     try {
-      const res = await fetch(`${API}/live-classes/${id}/${endpoint}`, {
-        method: 'POST', credentials: 'include',
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.message || 'Action failed');
-      }
+      await apiClient.post(`/live-classes/${id}/${endpoint}`);
       setMsg({ type: 'success', text: successMsg });
       dispatch(baseApi.util.invalidateTags(['TeacherLiveClasses']));
       await fetchClass();
     } catch (e: any) {
-      setMsg({ type: 'error', text: e?.message || 'Action failed. Try again.' });
+      setMsg({ type: 'error', text: e?.response?.data?.message || e?.message || 'Action failed. Try again.' });
     } finally {
       setActionLoading(false);
     }
@@ -182,18 +170,15 @@ export default function TeacherManageLiveClassPage() {
     setSavingSchedule(true);
     setMsg(null);
     try {
-      const res = await fetch(`${API}/live-classes/${id}`, {
-        method: 'PATCH', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduled_at: new Date(newScheduledAt).toISOString() }),
+      await apiClient.patch(`/live-classes/${id}`, {
+        scheduled_at: new Date(newScheduledAt).toISOString(),
       });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Failed');
       setMsg({ type: 'success', text: 'Schedule updated!' });
       setEditingSchedule(false);
       dispatch(baseApi.util.invalidateTags(['TeacherLiveClasses']));
       await fetchClass();
     } catch (e: any) {
-      setMsg({ type: 'error', text: e?.message || 'Failed to update schedule.' });
+      setMsg({ type: 'error', text: e?.response?.data?.message || e?.message || 'Failed to update schedule.' });
     } finally {
       setSavingSchedule(false);
     }

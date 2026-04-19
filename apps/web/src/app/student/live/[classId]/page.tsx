@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { LiveClassLayout, type LiveClassData } from '@/components/live/LiveClassLayout';
 import { useAppSelector } from '@/store/store';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+import apiClient from '@/../lib/api-client';
 
 export default function StudentLiveClassPage() {
   const { classId } = useParams<{ classId: string }>();
@@ -21,12 +20,9 @@ export default function StudentLiveClassPage() {
 
     async function load() {
       try {
-        const res = await fetch(`${API}/live-classes/${classId}`, {
-          credentials: 'include',
-        });
-        if (!res.ok) throw new Error('not found');
-        const raw = await res.json();
+        const res = await apiClient.get(`/live-classes/${classId}`);
         if (cancelled) return;
+        const raw = res.data;
         // Normalize fields
         const data: LiveClassData = {
           id: raw.id,

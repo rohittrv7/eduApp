@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/store';
 import { setUser, clearUser, setLoading } from '@/store/authSlice';
-import apiClient from '@/../lib/api-client';
+import apiClient, { tokenStorage } from '@/../lib/api-client';
 
 export function AuthInitializer() {
   const dispatch = useAppDispatch();
@@ -13,6 +13,14 @@ export function AuthInitializer() {
   useEffect(() => {
     if (fetched.current) return;
     fetched.current = true;
+
+    // Restore cookie from localStorage on page reload
+    // (middleware needs cookie; localStorage persists across reloads)
+    const storedToken = tokenStorage.getAccess();
+    if (storedToken) {
+      // Re-set cookie in case it expired (cookie max-age is 7d but just in case)
+      tokenStorage.setAccess(storedToken);
+    }
 
     dispatch(setLoading(true));
 
@@ -39,6 +47,7 @@ export function AuthInitializer() {
       .catch((err) => {
         if (err?.response?.status === 401) {
           dispatch(clearUser());
+          tokenStorage.clear();
         }
       })
       .finally(() => {
