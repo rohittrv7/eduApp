@@ -21,12 +21,14 @@ async function bootstrap() {
   // CORS with credentials
   const allowedOrigins = (process.env['FRONTEND_URL'] ?? 'http://localhost:3000')
     .split(',')
-    .map((o) => o.trim());
+    .map((o) => o.trim().replace(/\/$/, '')); // strip trailing slash
 
   app.enableCors({
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
+      // If no FRONTEND_URL set, allow all (dev fallback)
+      if (!process.env['FRONTEND_URL']) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       callback(new Error(`CORS: origin ${origin} not allowed`));
     },
