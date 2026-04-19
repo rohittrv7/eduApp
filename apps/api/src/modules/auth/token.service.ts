@@ -24,7 +24,7 @@ export class TokenService {
     private readonly configService: ConfigService,
   ) {}
 
-  async issueTokens(user: User, res: Response, deviceInfo?: string): Promise<void> {
+  async issueTokens(user: User, res: Response, deviceInfo?: string): Promise<{ accessToken: string; refreshToken: string }> {
     // Single-device enforcement: revoke all existing refresh tokens
     await this.revokeAllTokens(user.id);
 
@@ -74,10 +74,13 @@ export class TokenService {
       sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
+
+    return { accessToken, refreshToken: refreshTokenValue };
   }
 
-  async refreshAccessToken(req: Request, res: Response): Promise<void> {
-    const refreshTokenValue = req.cookies?.['refresh_token'] as string | undefined;
+  async refreshAccessToken(req: Request, res: Response, refreshTokenFromBody?: string): Promise<{ accessToken?: string; message: string }> {
+    // Accept token from body (cross-origin) or cookie (same-origin)
+    const refreshTokenValue = refreshTokenFromBody || (req.cookies?.['refresh_token'] as string | undefined);
     if (!refreshTokenValue) {
       throw new UnauthorizedException('No refresh token provided');
     }
@@ -128,6 +131,8 @@ export class TokenService {
       sameSite: isProd ? 'none' : 'lax',
       maxAge: 15 * 60 * 1000,
     });
+
+    return { accessToken: newAccessToken, message: 'Token refreshed' };
   }
 
   async revokeToken(tokenId: string): Promise<void> {

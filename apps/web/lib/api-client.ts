@@ -1,9 +1,34 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
+const TOKEN_KEY = 'access_token';
+const REFRESH_KEY = 'refresh_token';
+
+export const tokenStorage = {
+  getAccess: () => (typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null),
+  getRefresh: () => (typeof window !== 'undefined' ? localStorage.getItem(REFRESH_KEY) : null),
+  setAccess: (t: string) => typeof window !== 'undefined' && localStorage.setItem(TOKEN_KEY, t),
+  setRefresh: (t: string) => typeof window !== 'undefined' && localStorage.setItem(REFRESH_KEY, t),
+  clear: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(REFRESH_KEY);
+    }
+  },
+};
+
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1',
-  withCredentials: true,
+  withCredentials: false, // tokens via Authorization header, not cookies
   headers: { 'Content-Type': 'application/json' },
+});
+
+// Attach access token to every request
+apiClient.interceptors.request.use((config) => {
+  const token = tokenStorage.getAccess();
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
 });
 
 // Dev monitoring interceptor
@@ -52,11 +77,8 @@ let failedQueue: Array<{
 
 function processQueue(error: AxiosError | null) {
   failedQueue.forEach(({ resolve, reject }) => {
-    if (error) {
-      reject(error);
-    } else {
-      resolve(undefined);
-    }
+    if (error) reject(error);
+    else resolve(undefined);
   });
   failedQueue = [];
 }
@@ -79,11 +101,26 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await apiClient.post('/auth/refresh');
+        const refreshToken = tokenStorage.getRefresh();
+        if (!refreshToken) throw new Error('No refresh token');
+
+        // Send refresh token in body since we're not using cookies
+        const res = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/refresh`,
+          { refreshToken },
+          { headers: { 'Content-Type': 'application/json' } },
+        );
+
+        const newAccessToken = res.data?.accessToken as string;
+        if (newAccessToken) {
+          tokenStorage.setAccess(newAccessToken);
+        }
+
         processQueue(null);
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError as AxiosError);
+        tokenStorage.clear();
         if (typeof window !== 'undefined') {
           window.location.href = '/login?message=session_expired';
         }
@@ -94,7 +131,7 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;

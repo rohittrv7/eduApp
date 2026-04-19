@@ -110,11 +110,11 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
+    @Body() body: { refreshToken?: string },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ message: string }> {
-    await this.authService.refresh(req, res);
-    return { message: 'Token refreshed' };
+  ): Promise<{ accessToken?: string; message: string }> {
+    return this.authService.refresh(req, res, body.refreshToken);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -165,8 +165,14 @@ export class AuthController {
       : result.role === 'admin' ? 'admin/dashboard'
       : 'student/dashboard';
 
-    // Redirect to frontend auth-success page which will hydrate auth state
-    res.redirect(`${frontendUrl}/auth/google/success?redirect=/${dest}`);
+    // Redirect to frontend auth-success page with tokens in URL params
+    // (cross-origin cookie approach doesn't work between Render and Vercel)
+    const params = new URLSearchParams({
+      access_token: result.accessToken,
+      refresh_token: result.refreshToken,
+      redirect: `/${dest}`,
+    });
+    res.redirect(`${frontendUrl}/auth/google/success?${params.toString()}`);
   }
 
   @Public()

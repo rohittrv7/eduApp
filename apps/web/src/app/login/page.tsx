@@ -112,7 +112,13 @@ function LoginPageInner() {
     setApiError('');
     try {
       const res = await apiClient.post('/auth/email/verify-otp', { email: identifier, otp: data.otp });
-      const { isNewUser } = res.data;
+      const { isNewUser, accessToken, refreshToken } = res.data;
+      // Store tokens for cross-origin auth (Vercel frontend + Render backend)
+      if (accessToken) {
+        const { tokenStorage } = await import('@/../lib/api-client');
+        tokenStorage.setAccess(accessToken);
+        if (refreshToken) tokenStorage.setRefresh(refreshToken);
+      }
       await fetchAndSetUser(isNewUser);
     } catch (err: any) {
       const msg = err?.response?.data?.message || '';
@@ -185,7 +191,12 @@ function LoginPageInner() {
       const result = await confirmationRef.current.confirm(data.otp);
       const idToken = await result.user.getIdToken();
       const res = await apiClient.post('/auth/firebase/verify', { idToken });
-      const { isNewUser } = res.data;
+      const { isNewUser, accessToken, refreshToken } = res.data;
+      if (accessToken) {
+        const { tokenStorage } = await import('@/../lib/api-client');
+        tokenStorage.setAccess(accessToken);
+        if (refreshToken) tokenStorage.setRefresh(refreshToken);
+      }
       await fetchAndSetUser(isNewUser);
     } catch (err: any) {
       const code = err?.code as string | undefined;

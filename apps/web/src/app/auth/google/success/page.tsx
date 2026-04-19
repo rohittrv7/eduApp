@@ -3,7 +3,7 @@
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
-import apiClient from '@/../lib/api-client';
+import apiClient, { tokenStorage } from '@/../lib/api-client';
 
 function GoogleSuccessInner() {
   const router = useRouter();
@@ -12,6 +12,19 @@ function GoogleSuccessInner() {
   const { setUser } = useAuthStore();
 
   useEffect(() => {
+    // Extract tokens passed from backend via URL params
+    const accessToken = searchParams.get('access_token');
+    const refreshToken = searchParams.get('refresh_token');
+
+    if (accessToken) tokenStorage.setAccess(accessToken);
+    if (refreshToken) tokenStorage.setRefresh(refreshToken);
+
+    // Clean tokens from URL immediately for security
+    if (accessToken || refreshToken) {
+      const cleanUrl = window.location.pathname + (redirect ? `?redirect=${encodeURIComponent(redirect)}` : '');
+      window.history.replaceState({}, '', cleanUrl);
+    }
+
     apiClient.get('/users/me')
       .then((r) => {
         const u = r.data;
@@ -28,9 +41,10 @@ function GoogleSuccessInner() {
         router.replace(redirect);
       })
       .catch(() => {
+        tokenStorage.clear();
         router.replace('/login?message=google_failed');
       });
-  }, [redirect, router, setUser]);
+  }, [redirect, router, setUser, searchParams]);
 
   return (
     <div className="flex h-screen items-center justify-center bg-gray-900">

@@ -14,6 +14,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
+        // 1. Authorization: Bearer <token> header (cross-origin — Vercel + Render)
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        // 2. Cookie fallback (same-origin / local dev)
         (req: Request) => {
           return (req?.cookies?.['access_token'] as string) ?? null;
         },

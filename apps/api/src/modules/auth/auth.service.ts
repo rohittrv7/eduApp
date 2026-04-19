@@ -45,12 +45,12 @@ export class AuthService {
     otp: string,
     res: Response,
     deviceInfo?: string,
-  ): Promise<{ isNewUser: boolean }> {
+  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
     await this.otpService.verifyEmailOtp(email, otp);
     const { user, isNewUser } = await this.usersService.findOrCreateByEmail(email);
-    await this.tokenService.issueTokens(user, res, deviceInfo);
+    const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
     await this.usersService.updateStreak(user.id);
-    return { isNewUser: isNewUser || !user.full_name };
+    return { isNewUser: isNewUser || !user.full_name, accessToken, refreshToken };
   }
 
   async verifyOtp(
@@ -74,19 +74,19 @@ export class AuthService {
     idToken: string,
     res: Response,
     deviceInfo?: string,
-  ): Promise<{ isNewUser: boolean }> {
+  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
     const firebasePhone = await this.otpService.verifyFirebaseToken(idToken);
     const mobile = this.otpService.normalizePhoneNumber(firebasePhone);
     const { user, isNewUser } = await this.usersService.findOrCreateByMobile(mobile);
-    await this.tokenService.issueTokens(user, res, deviceInfo);
+    const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
     await this.usersService.updateStreak(user.id);
-    return { isNewUser };
+    return { isNewUser, accessToken, refreshToken };
   }
 
   async handleGoogleCallback(
     profile: GoogleProfile,
     res: Response,
-  ): Promise<{ isNewUser: boolean; role: string; requiresMobileLinking?: boolean }> {
+  ): Promise<{ isNewUser: boolean; role: string; accessToken: string; refreshToken: string }> {
     // Try to find by google_id first, then by email
     let user = await this.usersService.findByGoogleId(profile.googleId);
     let wasCreated = false;
@@ -114,9 +114,9 @@ export class AuthService {
       wasCreated = true;
     }
 
-    await this.tokenService.issueTokens(user, res);
+    const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res);
     await this.usersService.updateStreak(user.id);
-    return { isNewUser: wasCreated, role: user.role };
+    return { isNewUser: wasCreated, role: user.role, accessToken, refreshToken };
   }
 
   async linkMobileToGoogle(
@@ -143,8 +143,8 @@ export class AuthService {
     await this.tokenService.issueTokens(user, res);
   }
 
-  async refresh(req: Request, res: Response): Promise<void> {
-    await this.tokenService.refreshAccessToken(req, res);
+  async refresh(req: Request, res: Response, refreshTokenFromBody?: string): Promise<{ accessToken?: string; message: string }> {
+    return this.tokenService.refreshAccessToken(req, res, refreshTokenFromBody);
   }
 
   async logout(req: Request, res: Response): Promise<void> {
