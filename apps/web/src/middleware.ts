@@ -33,28 +33,39 @@ export function middleware(request: NextRequest) {
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const isLoginPage = pathname === '/login';
 
+  // Prevent redirect loop — if already on login page with session_expired, just show it
+  if (isLoginPage) {
+    // If valid token exists, redirect to dashboard
+    if (token) {
+      const payload = decodeJwtPayload(token);
+      if (payload && !isTokenExpired(payload)) {
+        const role = payload['role'] as string | undefined;
+        const dashboard = (role && ROLE_DASHBOARDS[role]) || '/student/dashboard';
+        return NextResponse.redirect(new URL(dashboard, request.url));
+      }
+    }
+    // No token or expired — just show login page, no redirect
+    return NextResponse.next();
+  }
+
   if (token) {
     const payload = decodeJwtPayload(token);
 
     // Expired token — treat as unauthenticated
     if (!payload || isTokenExpired(payload)) {
       if (isProtected) {
-        const returnUrl = encodeURIComponent(pathname + request.nextUrl.search);
-        const res = NextResponse.redirect(new URL(`/login?returnUrl=${returnUrl}&message=session_expired`, request.url));
-        // Clear expired cookie
+        // Use pathname directly — no encodeURIComponent to avoid double encoding
+        const res = NextResponse.redirect(
+          new URL(`/login?returnUrl=${pathname}&message=session_expired`, request.url),
+        );
         res.cookies.delete('access_token');
+        res.cookies.delete('refresh_token');
         return res;
       }
       return NextResponse.next();
     }
 
     const role = payload['role'] as string | undefined;
-
-    // Authenticated user on login page → redirect to their dashboard
-    if (isLoginPage) {
-      const dashboard = (role && ROLE_DASHBOARDS[role]) || '/student/dashboard';
-      return NextResponse.redirect(new URL(dashboard, request.url));
-    }
 
     // Role-based access check
     if (isProtected && role) {
@@ -71,8 +82,10 @@ export function middleware(request: NextRequest) {
 
   // No token — redirect protected routes to login
   if (isProtected) {
-    const returnUrl = encodeURIComponent(pathname + request.nextUrl.search);
-    return NextResponse.redirect(new URL(`/login?returnUrl=${returnUrl}`, request.url));
+    // Use pathname directly — no encodeURIComponent to avoid double encoding
+    return NextResponse.redirect(
+      new URL(`/login?returnUrl=${pathname}`, request.url),
+    );
   }
 
   return NextResponse.next();

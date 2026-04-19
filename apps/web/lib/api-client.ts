@@ -6,13 +6,24 @@ const REFRESH_KEY = 'refresh_token';
 export const tokenStorage = {
   getAccess: () => (typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null),
   getRefresh: () => (typeof window !== 'undefined' ? localStorage.getItem(REFRESH_KEY) : null),
-  setAccess: (t: string) => typeof window !== 'undefined' && localStorage.setItem(TOKEN_KEY, t),
-  setRefresh: (t: string) => typeof window !== 'undefined' && localStorage.setItem(REFRESH_KEY, t),
+  setAccess: (t: string) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(TOKEN_KEY, t);
+    // Also set as cookie so Next.js middleware can read it for route protection
+    document.cookie = `access_token=${t}; path=/; max-age=${15 * 60}; SameSite=Lax`;
+  },
+  setRefresh: (t: string) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(REFRESH_KEY, t);
+    document.cookie = `refresh_token=${t}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+  },
   clear: () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(REFRESH_KEY);
-    }
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+    // Clear cookies too
+    document.cookie = 'access_token=; path=/; max-age=0';
+    document.cookie = 'refresh_token=; path=/; max-age=0';
   },
 };
 
@@ -113,7 +124,7 @@ apiClient.interceptors.response.use(
 
         const newAccessToken = res.data?.accessToken as string;
         if (newAccessToken) {
-          tokenStorage.setAccess(newAccessToken);
+          tokenStorage.setAccess(newAccessToken); // updates both localStorage + cookie
         }
 
         processQueue(null);

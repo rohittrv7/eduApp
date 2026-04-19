@@ -43,7 +43,9 @@ export default function LoginPage() {
 function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get('returnUrl') || '';
+  // Decode returnUrl — middleware passes it without encodeURIComponent now
+  const rawReturnUrl = searchParams.get('returnUrl') || '';
+  const returnUrl = rawReturnUrl ? decodeURIComponent(rawReturnUrl) : '';
   const message = searchParams.get('message');
   const { setUser } = useAuthStore();
 
