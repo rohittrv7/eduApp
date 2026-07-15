@@ -17,30 +17,33 @@ export { REDIS_CLIENT };
         if (url) {
           const isTls = url.startsWith('rediss://');
           const client = new Redis(url, {
-            maxRetriesPerRequest: 1,
-            lazyConnect: true,
+            maxRetriesPerRequest: 3,
             tls: isTls ? { rejectUnauthorized: false } : undefined,
             retryStrategy: (times) => {
-              if (times > 3) return null; // stop retrying after 3 attempts
-              return Math.min(times * 1000, 3000);
+              if (times > 5) return null;
+              return Math.min(times * 500, 3000);
             },
-            enableOfflineQueue: false,
+            enableOfflineQueue: true,
+            connectTimeout: 10000,
           });
           // Suppress unhandled error events — app continues without Redis
-          client.on('error', () => {});
+          client.on('error', (err) => {
+            const logger = new (require('@nestjs/common').Logger)('RedisClient');
+            logger.warn(`Redis connection error: ${err?.message}`);
+          });
           return client;
         }
         return new Redis({
           host: config.get<string>('redis.host') ?? 'localhost',
           port: config.get<number>('redis.port') ?? 6379,
           password: config.get<string>('redis.password') || undefined,
-          lazyConnect: true,
-          maxRetriesPerRequest: 1,
+          maxRetriesPerRequest: 3,
           retryStrategy: (times) => {
-            if (times > 3) return null;
-            return Math.min(times * 1000, 3000);
+            if (times > 5) return null;
+            return Math.min(times * 500, 3000);
           },
-          enableOfflineQueue: false,
+          enableOfflineQueue: true,
+          connectTimeout: 10000,
         });
       },
     },
