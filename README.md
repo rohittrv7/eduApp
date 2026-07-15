@@ -223,7 +223,7 @@ http://localhost:3001/api/v1/auth/google/callback
 
 ## API Overview
 
-Base URL: `https://eduapp-1-nn7j.onrender.com/api/v1`
+Base URL: `https://eduapp-1-tqo2.onrender.com/api/v1`
 
 | Module | Endpoints |
 |---|---|
