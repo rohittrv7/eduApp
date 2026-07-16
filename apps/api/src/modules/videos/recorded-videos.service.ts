@@ -11,12 +11,13 @@ import { Enrollment } from '../batches/entities/enrollment.entity';
 import { CreateRecordedVideoDto } from './dto/create-recorded-video.dto';
 import { UpdateRecordedVideoDto } from './dto/update-recorded-video.dto';
 import { isValidYouTubeUrl } from '@educational/utils';
+import { LanguagePref } from '../users/entities/user.entity';
 
 function extractYouTubeVideoId(url: string): string {
   const match = url.match(
     /(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/,
   );
-  return match ? match[1] : '';
+  return match?.[1] ?? '';
 }
 
 @Injectable()
@@ -46,7 +47,7 @@ export class RecordedVideosService {
       youtube_video_id: extractYouTubeVideoId(dto.youtube_url),
       thumbnail: dto.thumbnail ?? null,
       duration_seconds: dto.duration_seconds ?? 0,
-      language: dto.language,
+      language: dto.language ?? LanguagePref.HINDI,
       is_locked: dto.is_locked ?? false,
       order_index: dto.order_index ?? 0,
     });
