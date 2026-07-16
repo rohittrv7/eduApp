@@ -12,6 +12,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientSecret: configService.get<string>('google.clientSecret') ?? '',
       callbackURL: configService.get<string>('google.callbackUrl') ?? '',
       scope: ['email', 'profile'],
+      prompt: 'select_account',
     });
   }
 
