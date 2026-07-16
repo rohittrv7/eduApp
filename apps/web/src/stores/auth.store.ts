@@ -4,6 +4,7 @@
  */
 import { useAppDispatch, useAppSelector } from '@/store/store';
 import { setUser, clearUser, setLoading } from '@/store/authSlice';
+import { baseApi } from '@/store/api';
 
 export type { UserRole, SkillLevel, UserProfile } from '@/store/authSlice';
 
@@ -16,7 +17,10 @@ export function useAuthStore() {
     user,
     isLoading,
     setUser: (u: Parameters<typeof setUser>[0]) => dispatch(setUser(u)),
-    clearUser: () => dispatch(clearUser()),
+    clearUser: () => {
+      dispatch(clearUser());
+      dispatch(baseApi.util.resetApiState());
+    },
     setLoading: (loading: boolean) => dispatch(setLoading(loading)),
   };
 }

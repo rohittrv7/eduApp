@@ -91,28 +91,28 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          'fixed left-0 top-0 z-30 flex h-full w-64 flex-col bg-white shadow-lg transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none',
+          'fixed left-0 top-0 z-30 flex h-full w-64 flex-col border-r border-slate-200 bg-white/90 backdrop-blur-md shadow-lg transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between border-b px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a56db] text-white font-bold text-sm">
-              BD
+        <div className="flex h-16 items-center justify-between border-b border-slate-100 px-6">
+          <Link href="/" className="flex items-center gap-2.5 text-xl font-black text-blue-600 tracking-tight">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-sm shadow-md shadow-blue-500/10">
+              æ
             </div>
-            <span className="font-semibold text-gray-900">allEdu</span>
+            <span>allEdu</span>
           </Link>
           <button
-            className="lg:hidden text-gray-500 hover:text-gray-700"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border text-slate-500 hover:bg-slate-50 hover:text-slate-700 lg:hidden transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
-            <X size={20} />
+            <X size={16} />
           </button>
         </div>
 
         {/* Nav links */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
+        <nav className="flex-1 overflow-y-auto py-6 px-4">
           <ul className="space-y-1">
             {links.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -122,13 +122,13 @@ export function Sidebar() {
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                      'flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-bold transition-all duration-200',
                       isActive
-                        ? 'bg-[#1a56db] text-white'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        ? 'bg-blue-50 text-blue-600 border border-blue-100/50 shadow-sm'
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                     )}
                   >
-                    {item.icon}
+                    <span className={cn('shrink-0', isActive ? 'text-blue-600' : 'text-slate-400')}>{item.icon}</span>
                     {item.label}
                   </Link>
                 </li>

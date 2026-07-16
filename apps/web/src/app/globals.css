@@ -55,8 +55,14 @@
     border-color: hsl(var(--border));
   }
   body {
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display), var(--font-sans), sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.025em;
   }
 }
 

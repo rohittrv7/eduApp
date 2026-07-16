@@ -209,10 +209,13 @@ export class OtpService {
       return;
     }
 
+    const port = this.config.get<number>('email.port') || 587;
+    const secure = port === 465;
+
     this.mailer = nodemailer.createTransport({
       host: host || 'smtp.gmail.com',
-      port: this.config.get<number>('email.port') || 587,
-      secure: false,
+      port,
+      secure,
       auth: { user, pass },
       connectionTimeout: 5000,
       socketTimeout: 5000,

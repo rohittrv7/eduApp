@@ -23,7 +23,7 @@ export { REDIS_CLIENT };
               if (times > 5) return null;
               return Math.min(times * 500, 3000);
             },
-            enableOfflineQueue: true,
+            enableOfflineQueue: false,
             connectTimeout: 10000,
           });
           // Suppress unhandled error events — app continues without Redis
@@ -42,7 +42,7 @@ export { REDIS_CLIENT };
             if (times > 5) return null;
             return Math.min(times * 500, 3000);
           },
-          enableOfflineQueue: true,
+          enableOfflineQueue: false,
           connectTimeout: 10000,
         });
       },
