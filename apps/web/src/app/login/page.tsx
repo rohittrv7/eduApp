@@ -236,18 +236,7 @@ function LoginPageInner() {
       const meRes = await apiClient.get('/users/me');
       const user = meRes.data;
       if (user) {
-        setUser({
-          id: user.id,
-          fullName: user.full_name || '',
-          email: user.email || undefined,
-          mobile: user.mobile?.startsWith('email_') || user.mobile?.startsWith('google_')
-            ? undefined
-            : user.mobile,
-          role: user.role,
-          photo: user.profile_photo || undefined,
-          skillLevel: user.skill_level || undefined,
-          streakCount: user.streak_count ?? 0,
-        });
+        setUser({ id: user.id, fullName: user.full_name || '', role: user.role, photo: user.profile_photo });
         userRole = user.role;
       }
     } catch { /* proceed anyway */ }
@@ -256,215 +245,173 @@ function LoginPageInner() {
     else router.push(returnUrl || getDashboardUrl(userRole));
   }
 
-  const handleGoogleLogin = () => {
+  function handleGoogleLogin() {
+    // NEXT_PUBLIC_API_URL already includes /api/v1 (e.g. http://localhost:3001/api/v1)
     const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace(/\/+$/, '');
     window.location.href = `${apiUrl}/auth/google`;
-  };
+  }
 
   const onSendOtp = isEmailMode ? onSendEmailOtp : onSendPhoneOtp;
   const onVerifyOtp = isEmailMode ? onVerifyEmailOtp : onVerifyPhoneOtp;
   const handleResendOtp = isEmailMode ? handleResendEmailOtp : handleResendPhoneOtp;
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       {/* reCAPTCHA container — only used in phone mode */}
       <div id="recaptcha-container" />
 
-      {/* Visual Side Banner (Hidden on Mobile) */}
-      <div className="relative hidden w-1/2 overflow-hidden bg-gradient-to-tr from-blue-700 via-indigo-800 to-violet-900 md:block">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
-        
-        {/* Glow lights */}
-        <div className="absolute -left-20 -top-20 h-96 w-96 rounded-full bg-blue-500/30 blur-3xl animate-pulse" />
-        <div className="absolute -bottom-20 right-0 h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
-
-        <div className="flex h-full flex-col justify-between p-12 text-white">
-          <Link href="/" className="flex items-center gap-2.5 text-2xl font-black tracking-tight">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-blue-700 font-bold text-base shadow-lg">
-              æ
-            </div>
-            allEdu
-          </Link>
-
-          <div className="max-w-md">
-            <h2 className="text-4xl font-extrabold leading-tight tracking-tight text-white lg:text-5xl">
-              Unlock Your Potential with India's Best.
-            </h2>
-            <p className="mt-4 text-base text-blue-100 leading-relaxed">
-              Join thousands of students cracking JEE, NEET, UPSC, and board exams with live guidance, comprehensive materials, and detailed test analytics.
-            </p>
-          </div>
-
-          <p className="text-xs text-blue-200">
-            © {new Date().getFullYear()} allEdu. Empowering learning nationwide.
-          </p>
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <Link href="/" className="text-2xl font-bold text-[#1a56db]">allEdu</Link>
+          <p className="mt-1 text-sm text-gray-500">Learn from India&apos;s Best Teachers</p>
         </div>
-      </div>
 
-      {/* Form Section */}
-      <div className="flex w-full flex-col justify-center px-4 md:w-1/2 sm:px-12 lg:px-20">
-        <div className="mx-auto w-full max-w-md">
-          {/* Logo for mobile */}
-          <div className="mb-8 text-center md:hidden">
-            <Link href="/" className="inline-flex items-center gap-2.5 text-3xl font-black text-blue-600">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-base shadow-md">
-                æ
-              </div>
-              allEdu
-            </Link>
-            <p className="mt-2 text-sm text-slate-500">Learn from India's Best Teachers</p>
-          </div>
+        <div className="rounded-2xl bg-white p-8 shadow-sm border">
+          {message === 'session_expired' && (
+            <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-800">
+              Your session expired. Please log in again.
+            </div>
+          )}
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-100/50">
-            {message === 'session_expired' && (
-              <div className="mb-6 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
-                <span>⚠️</span>
-                <span>Your session expired. Please log in again.</span>
-              </div>
-            )}
+          {step === 'identifier' ? (
+            <>
+              <h1 className="text-xl font-bold text-gray-900">Login / Sign Up</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                {isEmailMode ? 'Enter your email to continue' : 'Enter your mobile number to continue'}
+              </p>
 
-            {step === 'identifier' ? (
-              <>
-                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Welcome Back</h1>
-                <p className="mt-1.5 text-sm text-slate-500">
-                  {isEmailMode ? 'Enter your email to continue to your dashboard' : 'Enter your mobile number to get started'}
-                </p>
-
-                <form onSubmit={identifierForm.handleSubmit(onSendOtp)} className="mt-6 space-y-4">
-                  <div>
-                    <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                      {isEmailMode ? 'Email Address' : 'Mobile Number'}
-                    </label>
-                    {isEmailMode ? (
+              <form onSubmit={identifierForm.handleSubmit(onSendOtp)} className="mt-6 space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                    {isEmailMode ? 'Email Address' : 'Mobile Number'}
+                  </label>
+                  {isEmailMode ? (
+                    <input
+                      type="email"
+                      inputMode="email"
+                      placeholder="you@example.com"
+                      {...identifierForm.register('identifier')}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
+                    />
+                  ) : (
+                    <div className="flex">
+                      <span className="flex items-center rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 px-3 text-sm text-gray-500">+91</span>
                       <input
-                        type="email"
-                        inputMode="email"
-                        placeholder="name@domain.com"
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        placeholder="9876543210"
                         {...identifierForm.register('identifier')}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-slate-400"
+                        className="flex-1 rounded-r-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
                       />
-                    ) : (
-                      <div className="flex">
-                        <span className="flex items-center rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 px-3 text-sm font-semibold text-slate-500">+91</span>
-                        <input
-                          type="tel"
-                          inputMode="numeric"
-                          maxLength={10}
-                          placeholder="9876543210"
-                          {...identifierForm.register('identifier')}
-                          className="flex-1 rounded-r-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-slate-400"
-                        />
-                      </div>
-                    )}
-                    {identifierForm.formState.errors.identifier && (
-                      <p className="mt-1 text-xs text-rose-500 font-medium">{identifierForm.formState.errors.identifier.message}</p>
-                    )}
-                  </div>
-
-                  {apiError && <p className="text-xs text-rose-500 font-medium">{apiError}</p>}
-
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-all shadow-md shadow-blue-500/10 hover:shadow-lg active:scale-[0.99]"
-                  >
-                    {submitting ? 'Sending OTP...' : 'Send OTP'}
-                  </button>
-                </form>
-
-                <div className="mt-6 flex items-center gap-3">
-                  <div className="flex-1 border-t border-slate-100" />
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">or</span>
-                  <div className="flex-1 border-t border-slate-100" />
+                    </div>
+                  )}
+                  {identifierForm.formState.errors.identifier && (
+                    <p className="mt-1 text-xs text-red-500">{identifierForm.formState.errors.identifier.message}</p>
+                  )}
                 </div>
+
+                {apiError && <p className="text-xs text-red-500">{apiError}</p>}
 
                 <button
-                  onClick={handleGoogleLogin}
-                  className="mt-5 flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-all"
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full rounded-xl bg-[#1a56db] py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60 transition-colors"
                 >
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
-                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-                    <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-                  </svg>
-                  Continue with Google
+                  {submitting ? 'Sending OTP...' : 'Send OTP'}
                 </button>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 mb-4">
-                  <button
-                    onClick={() => { setStep('identifier'); setApiError(''); }}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    ←
-                  </button>
-                  <h1 className="text-xl font-bold text-slate-900">Enter Verification Code</h1>
+              </form>
+
+              <div className="mt-5 flex items-center gap-3">
+                <div className="flex-1 border-t border-gray-200" />
+                <span className="text-xs text-gray-400">or</span>
+                <div className="flex-1 border-t border-gray-200" />
+              </div>
+
+              <button
+                onClick={handleGoogleLogin}
+                className="mt-4 flex w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                  <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                </svg>
+                Continue with Google
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 mb-4">
+                <button
+                  onClick={() => { setStep('identifier'); setApiError(''); }}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >←</button>
+                <h1 className="text-xl font-bold text-gray-900">Enter OTP</h1>
+              </div>
+              <p className="text-sm text-gray-500">
+                We sent a 6-digit OTP to{' '}
+                <span className="font-medium text-gray-700">
+                  {isEmailMode ? identifier : `+91 ${identifier}`}
+                </span>
+              </p>
+
+              <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="mt-6 space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">OTP</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="123456"
+                    autoComplete="one-time-code"
+                    {...otpForm.register('otp')}
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-center text-xl font-mono tracking-widest outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
+                  />
+                  {otpForm.formState.errors.otp && (
+                    <p className="mt-1 text-xs text-red-500">{otpForm.formState.errors.otp.message}</p>
+                  )}
                 </div>
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  We sent a 6-digit verification code to{' '}
-                  <span className="font-semibold text-slate-800">
-                    {isEmailMode ? identifier : `+91 ${identifier}`}
-                  </span>
-                </p>
 
-                <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="mt-6 space-y-4">
-                  <div>
-                    <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Security Code</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      placeholder="••••••"
-                      autoComplete="one-time-code"
-                      {...otpForm.register('otp')}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-center text-2xl font-mono font-bold tracking-[0.3em] outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-slate-300"
-                    />
-                    {otpForm.formState.errors.otp && (
-                      <p className="mt-1 text-xs text-rose-500 font-medium">{otpForm.formState.errors.otp.message}</p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">
+                    {countdown > 0 ? (
+                      <>OTP expires in <span className="font-mono font-semibold text-gray-700">{formatCountdown(countdown)}</span></>
+                    ) : (
+                      <span className="text-red-500">OTP expired</span>
                     )}
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">
-                      {countdown > 0 ? (
-                        <>Code expires in <span className="font-mono font-bold text-slate-700">{formatCountdown(countdown)}</span></>
-                      ) : (
-                        <span className="font-semibold text-rose-500">Code expired</span>
-                      )}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleResendOtp}
-                      disabled={countdown > 0 || submitting}
-                      className="font-bold text-blue-600 disabled:text-slate-400 disabled:cursor-not-allowed hover:underline"
-                    >
-                      Resend Code
-                    </button>
-                  </div>
-
-                  {apiError && <p className="text-xs text-rose-500 font-medium">{apiError}</p>}
-
+                  </span>
                   <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full rounded-xl bg-blue-600 py-3.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-all shadow-md active:scale-[0.99]"
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={countdown > 0 || submitting}
+                    className="font-medium text-[#1a56db] disabled:text-gray-400 disabled:cursor-not-allowed hover:underline"
                   >
-                    {submitting ? 'Verifying Code...' : 'Verify & Continue'}
+                    Resend OTP
                   </button>
-                </form>
-              </>
-            )}
-          </div>
+                </div>
 
-          <p className="mt-6 text-center text-xs text-slate-400">
-            By continuing, you agree to our{' '}
-            <Link href="/terms" className="font-semibold text-blue-600 hover:underline">Terms of Service</Link>{' '}
-            and{' '}
-            <Link href="/privacy" className="font-semibold text-blue-600 hover:underline">Privacy Policy</Link>
-          </p>
+                {apiError && <p className="text-xs text-red-500">{apiError}</p>}
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full rounded-xl bg-[#1a56db] py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                >
+                  {submitting ? 'Verifying...' : 'Verify OTP'}
+                </button>
+              </form>
+            </>
+          )}
         </div>
+
+        <p className="mt-6 text-center text-xs text-gray-400">
+          By continuing, you agree to our{' '}
+          <Link href="/terms" className="text-[#1a56db] hover:underline">Terms</Link>{' '}
+          and{' '}
+          <Link href="/privacy" className="text-[#1a56db] hover:underline">Privacy Policy</Link>
+        </p>
       </div>
     </div>
   );

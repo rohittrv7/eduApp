@@ -209,25 +209,21 @@ function PurchasePrompt({ batch, onEnrollFree, onPay, loading, onClose }: {
   batch: any; onEnrollFree: () => void; onPay: () => void; loading: boolean; onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
-      <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 border border-amber-100 text-amber-500">
-          <Lock size={22} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100">
+          <Lock size={22} className="text-orange-500" />
         </div>
-        <h3 className="text-lg font-black text-slate-900">Content Locked</h3>
-        <p className="mt-1.5 text-sm font-medium text-slate-500 leading-relaxed">
-          Please enroll in this batch to unlock access to all video lectures, study materials, and tests.
-        </p>
-        <div className="mt-4 rounded-2xl border border-slate-200/60 bg-slate-50 p-4">
-          <p className="text-sm font-bold text-slate-800 line-clamp-1">{batch.name}</p>
-          <p className="mt-1 text-2xl font-black text-blue-600">{batch.is_free ? 'Free' : `₹${batch.price}`}</p>
+        <h3 className="text-lg font-bold text-gray-900">Content Locked</h3>
+        <p className="mt-1 text-sm text-gray-500">Ye video dekhne ke liye pehle batch mein enroll karo.</p>
+        <div className="mt-4 rounded-lg border p-4">
+          <p className="font-semibold text-gray-800">{batch.name}</p>
+          <p className="mt-1 text-2xl font-bold text-[#1a56db]">{batch.is_free ? 'Free' : `₹${batch.price}`}</p>
         </div>
-        <div className="mt-5 flex gap-3">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 active:bg-slate-100 transition-colors">
-            Cancel
-          </button>
+        <div className="mt-4 flex gap-3">
+          <button onClick={onClose} className="flex-1 rounded-lg border py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
           <button onClick={batch.is_free ? onEnrollFree : onPay} disabled={loading}
-            className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-500/10 active:scale-[0.98]">
+            className="flex-1 rounded-lg bg-[#1a56db] py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
             {loading ? 'Processing...' : batch.is_free ? 'Enroll Free' : `Buy ₹${batch.price}`}
           </button>
         </div>
@@ -246,6 +242,7 @@ export default function BatchDetailPage() {
 
   const { data, isLoading, refetch } = useGetBatchDetailQuery(batchId);
   const { data: liveClasses = [] } = useGetBatchLiveClassesQuery(data?.id ?? '', { skip: !data?.id });
+  // Live tab: sirf active aur upcoming (approved) dikhao — ended nahi
   const visibleLiveClasses = liveClasses.filter((l: any) =>
     ['approved', 'active'].includes(l.status)
   );
@@ -307,10 +304,10 @@ export default function BatchDetailPage() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="animate-pulse space-y-4 max-w-2xl mx-auto">
-          <div className="h-8 w-2/3 rounded-xl bg-slate-200" />
-          <div className="h-4 w-1/2 rounded-xl bg-slate-100" />
-          <div className="h-48 rounded-3xl bg-slate-100" />
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-2/3 rounded bg-gray-200" />
+          <div className="h-4 w-1/2 rounded bg-gray-100" />
+          <div className="h-48 rounded-xl bg-gray-100" />
         </div>
       </DashboardLayout>
     );
@@ -319,9 +316,7 @@ export default function BatchDetailPage() {
   if (!data) {
     return (
       <DashboardLayout>
-        <div className="py-16 text-center max-w-2xl mx-auto border rounded-3xl bg-white shadow-sm border-slate-200">
-          <p className="text-slate-400 font-bold">Batch not found.</p>
-        </div>
+        <p className="py-12 text-center text-gray-500">Batch not found.</p>
       </DashboardLayout>
     );
   }
@@ -344,54 +339,54 @@ export default function BatchDetailPage() {
         />
       )}
 
-      <div className="mx-auto max-w-2xl space-y-6 pb-12 font-sans">
+      <div className="mx-auto max-w-2xl space-y-5">
         {/* Batch Info Card */}
-        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
           {data.thumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={data.thumbnail} alt={data.name} className="h-52 w-full object-cover" />
+            <img src={data.thumbnail} alt={data.name} className="h-44 w-full object-cover" />
           ) : (
-            <div className="flex h-36 items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 border-b border-slate-100">
-              <BookOpen size={40} className="text-blue-600 opacity-45" />
+            <div className="flex h-32 items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+              <BookOpen size={40} className="text-[#1a56db] opacity-40" />
             </div>
           )}
-          <div className="p-6">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">{data.name}</h1>
-            {data.description && <p className="mt-2 text-sm font-medium text-slate-500 leading-relaxed">{data.description}</p>}
-            <div className="mt-4 flex flex-wrap gap-2">
+          <div className="p-5">
+            <h1 className="text-xl font-bold text-gray-900">{data.name}</h1>
+            {data.description && <p className="mt-1 text-sm text-gray-500">{data.description}</p>}
+            <div className="mt-3 flex flex-wrap gap-2">
               {data.target_exam && (
-                <span className="rounded-full bg-blue-50 border border-blue-100 px-3 py-1 text-xs font-bold text-blue-700">{data.target_exam}</span>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{data.target_exam}</span>
               )}
               {data.language && (
-                <span className="rounded-full bg-slate-50 border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 capitalize">{data.language}</span>
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600 capitalize">{data.language}</span>
               )}
               {totalVideos > 0 && (
-                <span className="rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{totalVideos} videos</span>
+                <span className="rounded-full bg-green-50 px-3 py-1 text-xs text-green-700">{totalVideos} videos</span>
               )}
               {visibleLiveClasses.length > 0 && (
-                <span className="rounded-full bg-rose-50 border border-rose-100 px-3 py-1 text-xs font-bold text-rose-700">{visibleLiveClasses.length} live classes</span>
+                <span className="rounded-full bg-red-50 px-3 py-1 text-xs text-red-700">{visibleLiveClasses.length} live classes</span>
               )}
             </div>
 
             {/* Enrollment section */}
-            <div className="mt-6">
+            <div className="mt-5">
               {isEnrolled ? (
-                <div className="flex items-center gap-2.5 rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3.5">
-                  <CheckCircle size={20} className="text-emerald-600 shrink-0" />
-                  <span className="text-sm font-bold text-emerald-800">You are enrolled in this batch</span>
+                <div className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3">
+                  <CheckCircle size={18} className="text-green-600" />
+                  <span className="text-sm font-medium text-green-700">Aap is batch mein enrolled hain</span>
                 </div>
               ) : (
-                <div className="flex items-center justify-between rounded-2xl border-2 border-dashed border-blue-500/25 bg-blue-50/20 p-5">
+                <div className="flex items-center justify-between rounded-xl border-2 border-dashed border-[#1a56db]/30 bg-blue-50/40 p-4">
                   <div>
-                    <p className="text-3xl font-black text-slate-900">
-                      {data.is_free ? <span className="text-emerald-600">Free</span> : `₹${data.price}`}
+                    <p className="text-2xl font-bold text-gray-900">
+                      {data.is_free ? <span className="text-green-600">Free</span> : `₹${data.price}`}
                     </p>
-                    {!data.is_free && <p className="text-[11px] font-bold text-slate-400 mt-0.5">One-time payment • Lifetime access</p>}
+                    {!data.is_free && <p className="text-xs text-gray-400">One-time payment • Lifetime access</p>}
                   </div>
                   <button
                     onClick={data.is_free ? handleEnrollFree : handlePay}
                     disabled={enrolling}
-                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-500/10 active:scale-[0.98]"
+                    className="flex items-center gap-2 rounded-lg bg-[#1a56db] px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                   >
                     <ShoppingCart size={15} />
                     {enrolling ? 'Processing...' : data.is_free ? 'Enroll Free' : 'Buy Now'}
@@ -399,7 +394,7 @@ export default function BatchDetailPage() {
                 </div>
               )}
               {enrollMsg && (
-                <p className={`mt-3 text-sm font-semibold ${enrollMsg.toLowerCase().includes('success') || enrollMsg.includes('enrolled') ? 'text-emerald-600' : 'text-rose-500'}`}>
+                <p className={`mt-2 text-sm ${enrollMsg.toLowerCase().includes('success') || enrollMsg.includes('enrolled') ? 'text-green-600' : 'text-red-500'}`}>
                   {enrollMsg}
                 </p>
               )}
@@ -409,26 +404,26 @@ export default function BatchDetailPage() {
 
         {/* Tabs — only show if enrolled */}
         {isEnrolled && (
-          <div className="flex gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+          <div className="flex gap-1 rounded-xl border bg-white p-1 shadow-sm">
             <button onClick={() => setActiveTab('videos')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-all duration-200
-                ${activeTab === 'videos' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/15' : 'text-slate-600 hover:bg-slate-50'}`}>
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors
+                ${activeTab === 'videos' ? 'bg-[#1a56db] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
               <BookOpen size={15} /> Videos
             </button>
             <button onClick={() => setActiveTab('live')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-all duration-200
-                ${activeTab === 'live' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/15' : 'text-slate-600 hover:bg-slate-50'}`}>
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors
+                ${activeTab === 'live' ? 'bg-[#1a56db] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
               <Radio size={15} /> Live
               {activeLiveCount > 0 && (
-                <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-black text-white uppercase tracking-wider animate-pulse">LIVE</span>
+                <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-xs text-white">LIVE</span>
               )}
             </button>
             <button onClick={() => setActiveTab('notes')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-all duration-200
-                ${activeTab === 'notes' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/15' : 'text-slate-600 hover:bg-slate-50'}`}>
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors
+                ${activeTab === 'notes' ? 'bg-[#1a56db] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
               📄 Notes
               {studyMaterials.length > 0 && (
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${activeTab === 'notes' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                <span className={`rounded-full px-1.5 py-0.5 text-xs ${activeTab === 'notes' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'}`}>
                   {studyMaterials.length}
                 </span>
               )}
@@ -439,13 +434,13 @@ export default function BatchDetailPage() {
         {/* Videos Tab */}
         {(!isEnrolled || activeTab === 'videos') && (
           subjects.length > 0 ? (
-            <div className="space-y-4">
-              {isEnrolled && <h2 className="font-extrabold text-slate-800 text-lg">Batch Content</h2>}
+            <div className="space-y-3">
+              {isEnrolled && <h2 className="font-semibold text-gray-800">Batch Content</h2>}
               {subjects.map((subject: any) => (
-                <div key={subject.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                  <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3.5">
-                    <BookOpen size={16} className="text-blue-600" />
-                    <span className="font-bold text-slate-800">{subject.name ?? subject.title}</span>
+                <div key={subject.id} className="rounded-xl border bg-white shadow-sm overflow-hidden">
+                  <div className="flex items-center gap-2 border-b bg-gray-50 px-4 py-3">
+                    <BookOpen size={16} className="text-[#1a56db]" />
+                    <span className="font-semibold text-gray-800">{subject.name ?? subject.title}</span>
                   </div>
                   {(subject.chapters ?? []).map((chapter: any) => (
                     <ChapterSection
@@ -458,22 +453,22 @@ export default function BatchDetailPage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+            <div className="rounded-xl border bg-white p-8 text-center shadow-sm">
               {isEnrolled ? (
                 <>
-                  <BookOpen size={40} className="mx-auto mb-3 text-slate-300" />
-                  <p className="text-sm font-bold text-slate-400">No video lectures are uploaded yet. Check back soon!</p>
+                  <BookOpen size={36} className="mx-auto mb-3 text-gray-300" />
+                  <p className="text-sm text-gray-500">Abhi koi video content nahi hai. Teacher jald hi add karega.</p>
                 </>
               ) : (
                 <>
-                  <Lock size={40} className="mx-auto mb-3 text-slate-300" />
-                  <p className="text-sm font-bold text-slate-500 leading-relaxed">
-                    {data.is_free ? 'Enroll in the batch to unlock all content.' : `Purchase this batch for ₹${data.price} to unlock course content.`}
+                  <Lock size={36} className="mx-auto mb-3 text-gray-300" />
+                  <p className="text-sm text-gray-500">
+                    {data.is_free ? 'Enroll karo content dekhne ke liye' : `₹${data.price} mein purchase karo content unlock karne ke liye`}
                   </p>
                   <button
                     onClick={data.is_free ? handleEnrollFree : handlePay}
                     disabled={enrolling}
-                    className="mt-5 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-500/10 active:scale-[0.98]"
+                    className="mt-4 rounded-lg bg-[#1a56db] px-6 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                   >
                     {data.is_free ? 'Enroll Free' : `Buy ₹${data.price}`}
                   </button>
@@ -486,11 +481,11 @@ export default function BatchDetailPage() {
         {/* Live Classes Tab */}
         {isEnrolled && activeTab === 'live' && (
           <div className="space-y-4">
-            <h2 className="font-extrabold text-slate-800 text-lg">Live Classes</h2>
+            <h2 className="font-semibold text-gray-800">Live Classes</h2>
             {visibleLiveClasses.length === 0 ? (
-              <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-                <Radio size={40} className="mx-auto mb-3 text-slate-300 animate-pulse" />
-                <p className="text-sm font-bold text-slate-400">No live classes are currently scheduled.</p>
+              <div className="rounded-xl border bg-white p-8 text-center shadow-sm">
+                <Radio size={36} className="mx-auto mb-3 text-gray-300" />
+                <p className="text-sm text-gray-500">Abhi koi live class schedule nahi hai.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -503,44 +498,45 @@ export default function BatchDetailPage() {
         )}
 
         {/* Notes Tab */}
-        {isEnrolled && activeTab === 'notes' && (
-          <div className="space-y-4">
-            <h2 className="font-extrabold text-slate-800 text-lg">Notes &amp; PDFs</h2>
+        {activeTab === 'notes' && (
+          <div className="space-y-3">
+            <h2 className="font-semibold text-gray-800">Notes &amp; PDFs</h2>
             {studyMaterials.length === 0 ? (
-              <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-                <p className="text-3xl mb-2">📄</p>
-                <p className="text-sm font-bold text-slate-400">No notes or study materials uploaded yet.</p>
+              <div className="rounded-xl border bg-white p-8 text-center shadow-sm">
+                <p className="text-2xl mb-2">📄</p>
+                <p className="text-sm text-gray-500">Abhi koi notes nahi hai. Teacher jald hi add karega.</p>
               </div>
             ) : (
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
-                {studyMaterials.map((m: any) => (
-                  <div key={m.id} className="flex items-center gap-4 px-4 py-3.5 hover:bg-slate-50 transition-colors">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-500 border border-rose-100">
-                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+              <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+                {studyMaterials.map((m: any, idx: number) => (
+                  <div key={m.id}
+                    className={`flex items-center gap-3 px-4 py-3 ${idx > 0 ? 'border-t' : ''}`}>
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50">
+                      <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z" />
                       </svg>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-slate-800">{m.title}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-100 border px-1.5 py-0.5 rounded">{m.type}</span>
+                      <p className="truncate text-sm font-medium text-gray-900">{m.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-gray-400 uppercase">{m.type}</span>
                         {m.is_free_preview && (
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-100">Free Preview</span>
+                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Free</span>
                         )}
                       </div>
                     </div>
                     {m.file_url ? (
                       <button
                         onClick={() => setPdfViewer({ materialId: m.id, title: m.title })}
-                        className="shrink-0 flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 shadow-sm shadow-blue-500/10 active:scale-[0.98] transition-all"
+                        className="shrink-0 flex items-center gap-1.5 rounded-lg bg-[#1a56db] px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                       >
                         <BookOpen size={12} />
                         View
                       </button>
                     ) : (
                       !isEnrolled && !m.is_free_preview ? (
-                        <span className="shrink-0 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-400 border border-slate-200">
-                          🔒 Locked
+                        <span className="shrink-0 rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-400">
+                          🔒 Enroll karo
                         </span>
                       ) : null
                     )}

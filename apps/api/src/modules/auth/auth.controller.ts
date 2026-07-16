@@ -155,9 +155,10 @@ export class AuthController {
     @Res() res: Response,
   ): Promise<void> {
     let frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-    const userAgent = req.headers['user-agent'] || '';
-    const isMobile = /mobile|android|iphone|ipad/i.test(userAgent);
-    if (isMobile || process.env['NODE_ENV'] === 'production') {
+    const requestHost = req.headers.host || '';
+    const isRemoteBackend = !requestHost.includes('localhost') && !requestHost.includes('127.0.0.1');
+
+    if (isMobile || process.env['NODE_ENV'] === 'production' || isRemoteBackend) {
       if (frontendUrl.includes('localhost')) {
         frontendUrl = 'https://edu-app-web.vercel.app';
       }

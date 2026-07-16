@@ -38,36 +38,36 @@ export function Header({ unreadCount = 0 }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-slate-200/80 bg-white/70 backdrop-blur-md px-4 sm:px-6 shadow-sm font-sans">
+    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-white px-4 shadow-sm">
       {/* Hamburger */}
       <button
         onClick={toggleSidebar}
-        className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 lg:hidden transition-colors"
+        className="text-gray-500 hover:text-gray-700 lg:hidden"
         aria-label="Toggle sidebar"
       >
-        <Menu size={20} />
+        <Menu size={22} />
       </button>
 
       {/* Search */}
       <form onSubmit={handleSearch} className="flex flex-1 max-w-md">
         <div className="relative w-full">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="search"
             placeholder="Search batches, topics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-slate-400"
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
           />
         </div>
       </form>
 
-      <div className="ml-auto flex items-center gap-4">
+      <div className="ml-auto flex items-center gap-3">
         {/* Notification bell */}
-        <Link href="/student/notifications" className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
-          <Bell size={18} />
+        <Link href="/student/notifications" className="relative text-gray-500 hover:text-gray-700">
+          <Bell size={22} />
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white shadow shadow-rose-500/30">
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -77,7 +77,7 @@ export function Header({ unreadCount = 0 }: HeaderProps) {
         <div className="relative">
           <button
             onClick={() => setDropdownOpen((v) => !v)}
-            className="flex items-center gap-2 rounded-full focus:outline-none hover:opacity-90 active:scale-95 transition-all"
+            className="flex items-center gap-2 rounded-full focus:outline-none"
             aria-label="User menu"
           >
             {user?.photo ? (
@@ -85,10 +85,10 @@ export function Header({ unreadCount = 0 }: HeaderProps) {
               <img
                 src={user.photo}
                 alt={user.fullName}
-                className="h-8.5 w-8.5 rounded-full object-cover border border-slate-200 shadow-sm"
+                className="h-8 w-8 rounded-full object-cover"
               />
             ) : (
-              <div className="flex h-8.5 w-8.5 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white text-sm font-black shadow-sm">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a56db] text-white text-sm font-semibold">
                 {user?.fullName?.[0]?.toUpperCase() ?? 'U'}
               </div>
             )}
@@ -100,36 +100,34 @@ export function Header({ unreadCount = 0 }: HeaderProps) {
                 className="fixed inset-0 z-10"
                 onClick={() => setDropdownOpen(false)}
               />
-              <div className="absolute right-0 z-20 mt-3.5 w-52 rounded-2xl border border-slate-200 bg-white py-1.5 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="border-b border-slate-100 px-4 py-3">
-                  <p className="text-sm font-bold text-slate-800 truncate">{user?.fullName}</p>
-                  <p className="text-[10px] font-extrabold text-slate-400 capitalize mt-0.5 tracking-wider">{user?.role}</p>
+              <div className="absolute right-0 z-20 mt-2 w-48 rounded-lg border bg-white py-1 shadow-lg">
+                <div className="border-b px-4 py-2">
+                  <p className="text-sm font-medium text-gray-900 truncate">{user?.fullName}</p>
+                  <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
                 </div>
-                <div className="p-1 space-y-0.5">
-                  <Link
-                    href={`/${user?.role ?? 'student'}/profile`}
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-                  >
-                    <UserCircle size={16} />
-                    Profile
-                  </Link>
-                  <Link
-                    href={`/${user?.role ?? 'student'}/settings`}
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-                  >
-                    <Settings size={16} />
-                    Settings
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
-                  >
-                    <LogOut size={16} />
-                    Logout
-                  </button>
-                </div>
+                <Link
+                  href={`/${user?.role ?? 'student'}/profile`}
+                  onClick={() => setDropdownOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <UserCircle size={16} />
+                  Profile
+                </Link>
+                <Link
+                  href={`/${user?.role ?? 'student'}/settings`}
+                  onClick={() => setDropdownOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <Settings size={16} />
+                  Settings
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                >
+                  <LogOut size={16} />
+                  Logout
+                </button>
               </div>
             </>
           )}
