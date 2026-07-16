@@ -154,16 +154,10 @@ export class AuthController {
     @Req() req: Request & { user: any },
     @Res() res: Response,
   ): Promise<void> {
-    let frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
-    const requestHost = req.headers.host || '';
-    const isRemoteBackend = !requestHost.includes('localhost') && !requestHost.includes('127.0.0.1');
-
-    if (isMobile || process.env['NODE_ENV'] === 'production' || isRemoteBackend) {
-      if (frontendUrl.includes('localhost')) {
-        frontendUrl = 'https://edu-app-web.vercel.app';
-      }
-    }
-    frontendUrl = (frontendUrl.split(',')[0] || '').trim().replace(/\/$/, '');
+    const frontendUrl = (process.env['FRONTEND_URL'] || 'http://localhost:3000')
+      .split(',')[0]
+      .trim()
+      .replace(/\/$/, '');
     const result = await this.authService.handleGoogleCallback(req.user, res);
 
     const dest = result.isNewUser ? 'onboarding'
@@ -179,16 +173,6 @@ export class AuthController {
       redirect: `/${dest}`,
     });
     res.redirect(`${frontendUrl}/auth/google/success?${params.toString()}`);
-  }
-
-  @Public()
-  @Post('google/mobile')
-  @HttpCode(HttpStatus.OK)
-  async googleMobileAuth(
-    @Body() dto: { idToken: string },
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
-    return this.authService.verifyGoogleMobileToken(dto.idToken, res);
   }
 
   @Public()

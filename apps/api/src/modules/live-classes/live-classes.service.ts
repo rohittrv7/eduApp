@@ -19,7 +19,7 @@ function isValidYouTubeUrl(url: string): boolean {
 
 function extractYouTubeVideoId(url: string): string {
   const match = url.match(/(?:youtube\.com\/(?:watch\?v=|live\/|embed\/)|youtu\.be\/)([\w-]+)/);
-  return match?.[1] ?? '';
+  return match ? match[1] : '';
 }
 
 @Injectable()

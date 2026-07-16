@@ -49,13 +49,7 @@ export class OtpService {
       this.logger.log(`[DEV] Email OTP for ${email}: ${otp}`);
     }
 
-    try {
-      await this.sendEmailViaNodemailer(email, otp);
-    } catch (err) {
-      this.logger.warn(`SMTP delivery failed for ${email}. Falling back to test OTP '123456'.`);
-      const fallbackHash = await bcrypt.hash('123456', 10);
-      await this.redis.set(`otp:email:${email}`, fallbackHash, this.OTP_TTL_SECONDS);
-    }
+    await this.sendEmailViaNodemailer(email, otp);
   }
 
   /**
@@ -158,7 +152,10 @@ export class OtpService {
       });
     } catch (err) {
       this.logger.error('Failed to send email OTP', err);
-      throw err;
+      // In dev, don't block login — OTP is already logged to console above
+      if (this.config.get<string>('nodeEnv') === 'production') {
+        throw new BadRequestException('Failed to send OTP email. Please try again.');
+      }
     }
   }
 
@@ -209,16 +206,11 @@ export class OtpService {
       return;
     }
 
-    const port = this.config.get<number>('email.port') || 587;
-    const secure = port === 465;
-
     this.mailer = nodemailer.createTransport({
       host: host || 'smtp.gmail.com',
-      port,
-      secure,
+      port: this.config.get<number>('email.port') || 587,
+      secure: false,
       auth: { user, pass },
-      connectionTimeout: 5000,
-      socketTimeout: 5000,
     });
   }
 }

@@ -9,10 +9,8 @@
     "baseUrl": "./",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "strictPropertyInitialization": false,
-    "exactOptionalPropertyTypes": false,
     "types": ["jest", "node"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.spec.ts", "test"]
+  "exclude": ["node_modules", "dist"]
 }

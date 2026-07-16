@@ -119,63 +119,6 @@ export class AuthService {
     return { isNewUser: wasCreated, role: user.role, accessToken, refreshToken };
   }
 
-  async verifyGoogleMobileToken(
-    idToken: string,
-    res: Response,
-  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
-    try {
-      const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-      if (!response.ok) {
-        throw new BadRequestException('Invalid Google token response');
-      }
-      const payload = (await response.json()) as any;
-      const googleId = payload.sub;
-      const email = payload.email;
-      const displayName = payload.name;
-      const profilePhoto = payload.picture;
-
-      if (!email) {
-        throw new BadRequestException('Google token did not return an email');
-      }
-
-      let user = await this.usersService.findByGoogleId(googleId);
-      let wasCreated = false;
-
-      if (!user) {
-        user = await this.usersService.findByEmail(email);
-        if (user) {
-          user = await this.usersService.updateUser(user.id, {
-            google_id: googleId,
-            full_name: user.full_name || displayName,
-          });
-        }
-      }
-
-      if (!user) {
-        const mobilePlaceholder = `google_${Date.now()}_${Math.floor(Math.random() * 9999)}`;
-        user = await this.usersService.createUser({
-          google_id: googleId,
-          email: email,
-          full_name: displayName,
-          mobile: mobilePlaceholder,
-        });
-        if (profilePhoto) {
-          await this.usersService.updateUser(user.id, {
-            profile_photo: profilePhoto,
-          });
-        }
-        wasCreated = true;
-      }
-
-      const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res);
-      await this.usersService.updateStreak(user.id);
-      return { isNewUser: wasCreated, accessToken, refreshToken };
-    } catch (err: any) {
-      console.error('Google mobile token verification failed:', err?.message);
-      throw new BadRequestException('Invalid Google token authentication');
-    }
-  }
-
   async linkMobileToGoogle(
     googleId: string,
     mobile: string,
