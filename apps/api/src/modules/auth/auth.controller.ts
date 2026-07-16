@@ -162,7 +162,7 @@ export class AuthController {
         frontendUrl = 'https://edu-app-web.vercel.app';
       }
     }
-    frontendUrl = frontendUrl.split(',')[0].trim().replace(/\/$/, '');
+    frontendUrl = (frontendUrl.split(',')[0] || '').trim().replace(/\/$/, '');
     const result = await this.authService.handleGoogleCallback(req.user, res);
 
     const dest = result.isNewUser ? 'onboarding'

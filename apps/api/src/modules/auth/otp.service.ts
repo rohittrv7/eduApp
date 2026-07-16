@@ -214,6 +214,8 @@ export class OtpService {
       port: this.config.get<number>('email.port') || 587,
       secure: false,
       auth: { user, pass },
+      connectionTimeout: 5000,
+      socketTimeout: 5000,
     });
   }
 }
