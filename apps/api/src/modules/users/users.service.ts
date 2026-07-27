@@ -148,13 +148,13 @@ export class UsersService {
   }
 
   async getWeeklyProgress(userId: string): Promise<object[]> {
-    const days: object[] = [];
-    for (let i = 6; i >= 0; i--) {
+    const promises = Array.from({ length: 7 }, (_, index) => {
+      const i = 6 - index;
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
 
-      const [watchResult, quizResult] = await Promise.all([
+      return Promise.all([
         this.watchSessionRepo
           .createQueryBuilder('ws')
           .select('SUM(ws.watch_time_secs)', 'total')
@@ -165,26 +165,25 @@ export class UsersService {
           .select('AVG(qa.percentage)', 'avg')
           .where('qa.student_id = :userId AND DATE(qa.submitted_at) = :date', { userId, date: dateStr })
           .getRawOne(),
-      ]);
-
-      days.push({
+      ]).then(([watchResult, quizResult]) => ({
         date: dateStr,
         watchTimeSecs: watchResult?.total ? parseInt(watchResult.total, 10) : 0,
         avgQuizScore: quizResult?.avg ? parseFloat(quizResult.avg) : 0,
-      });
-    }
-    return days;
+      }));
+    });
+
+    return Promise.all(promises);
   }
 
   async getMonthlyProgress(userId: string): Promise<object[]> {
-    const weeks: object[] = [];
-    for (let i = 3; i >= 0; i--) {
+    const promises = Array.from({ length: 4 }, (_, index) => {
+      const i = 3 - index;
       const weekEnd = new Date();
       weekEnd.setDate(weekEnd.getDate() - i * 7);
       const weekStart = new Date(weekEnd);
       weekStart.setDate(weekStart.getDate() - 6);
 
-      const [watchResult, quizResult] = await Promise.all([
+      return Promise.all([
         this.watchSessionRepo
           .createQueryBuilder('ws')
           .select('SUM(ws.watch_time_secs)', 'total')
@@ -203,16 +202,15 @@ export class UsersService {
             end: weekEnd,
           })
           .getRawOne(),
-      ]);
-
-      weeks.push({
+      ]).then(([watchResult, quizResult]) => ({
         weekStart: weekStart.toISOString().split('T')[0],
         weekEnd: weekEnd.toISOString().split('T')[0],
         watchTimeSecs: watchResult?.total ? parseInt(watchResult.total, 10) : 0,
         avgQuizScore: quizResult?.avg ? parseFloat(quizResult.avg) : 0,
-      });
-    }
-    return weeks;
+      }));
+    });
+
+    return Promise.all(promises);
   }
 
   async updateStreak(userId: string): Promise<void> {

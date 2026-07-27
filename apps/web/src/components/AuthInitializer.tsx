@@ -17,10 +17,12 @@ export function AuthInitializer() {
     // Restore cookie from localStorage on page reload
     // (middleware needs cookie; localStorage persists across reloads)
     const storedToken = tokenStorage.getAccess();
-    if (storedToken) {
-      // Re-set cookie in case it expired (cookie max-age is 7d but just in case)
-      tokenStorage.setAccess(storedToken);
+    if (!storedToken) {
+      dispatch(clearUser());
+      dispatch(setLoading(false));
+      return;
     }
+    tokenStorage.setAccess(storedToken);
 
     dispatch(setLoading(true));
 

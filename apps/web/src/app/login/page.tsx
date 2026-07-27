@@ -30,7 +30,7 @@ const otpSchema = z.object({
 type IdentifierForm = z.infer<typeof emailSchema>;
 type OtpForm = z.infer<typeof otpSchema>;
 
-const OTP_EXPIRY_SECS = 5 * 60;
+const OTP_EXPIRY_SECS = 10 * 60;
 
 export default function LoginPage() {
   return (
@@ -100,6 +100,7 @@ function LoginPageInner() {
     try {
       await apiClient.post('/auth/email/request-otp', { email: data.identifier });
       setIdentifier(data.identifier);
+      otpForm.reset({ otp: '' });
       setStep('otp');
       startCountdown();
     } catch (err: any) {
@@ -236,7 +237,14 @@ function LoginPageInner() {
       const meRes = await apiClient.get('/users/me');
       const user = meRes.data;
       if (user) {
-        setUser({ id: user.id, fullName: user.full_name || '', role: user.role, photo: user.profile_photo });
+        setUser({
+          id: user.id,
+          fullName: user.full_name || '',
+          email: user.email || undefined,
+          mobile: user.mobile?.startsWith('email_') || user.mobile?.startsWith('google_') ? undefined : user.mobile,
+          role: user.role,
+          photo: user.profile_photo,
+        });
         userRole = user.role;
       }
     } catch { /* proceed anyway */ }
@@ -365,7 +373,7 @@ function LoginPageInner() {
                     inputMode="numeric"
                     maxLength={6}
                     placeholder="123456"
-                    autoComplete="one-time-code"
+                    autoComplete="off"
                     {...otpForm.register('otp')}
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 text-center text-xl font-mono tracking-widest outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
                   />

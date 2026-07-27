@@ -133,7 +133,7 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError as AxiosError);
         tokenStorage.clear();
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
           window.location.href = '/login?message=session_expired';
         }
         return Promise.reject(refreshError);

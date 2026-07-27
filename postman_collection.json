@@ -1,0 +1,684 @@
+{
+  "info": {
+    "_postman_id": "live-app-api-collection-v1",
+    "name": "LiveApp API Collection",
+    "description": "Complete Postman Collection for Educational LiveApp Backend API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bootstrapSecret",
+      "value": "your_bootstrap_secret_here",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Bootstrap Admin Role",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"secret\": \"{{bootstrapSecret}}\",\n  \"email\": \"admin@example.com\",\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/bootstrap",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "bootstrap"]
+            }
+          }
+        },
+        {
+          "name": "Request Email OTP",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/email/request-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "email", "request-otp"]
+            }
+          }
+        },
+        {
+          "name": "Verify Email OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.accessToken) {",
+                  "    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/email/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "email", "verify-otp"]
+            }
+          }
+        },
+        {
+          "name": "Request Mobile OTP",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"+919876543210\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/otp/request",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "otp", "request"]
+            }
+          }
+        },
+        {
+          "name": "Verify Mobile OTP",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"+919876543210\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/otp/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "otp", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Verify Firebase Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"FIREBASE_ID_TOKEN_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/firebase/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "firebase", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"REFRESH_TOKEN_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          }
+        },
+        {
+          "name": "Logout All Devices",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout-all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. User Profile",
+      "item": [
+        {
+          "name": "Get Profile (Me)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"languagePref\": \"hinglish\",\n  \"skillLevel\": \"intermediate\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            }
+          }
+        },
+        {
+          "name": "Get User Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/me/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Weekly Progress",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/me/progress/weekly",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me", "progress", "weekly"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Admin Management",
+      "item": [
+        {
+          "name": "Admin Dashboard Overview",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "dashboard"]
+            }
+          }
+        },
+        {
+          "name": "List Students",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/students?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "students"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export Students CSV",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/students/export",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "students", "export"]
+            }
+          }
+        },
+        {
+          "name": "Change User Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId/role",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", ":userId", "role"],
+              "variable": [
+                { "key": "userId", "value": "USER_UUID_HERE" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ban Student",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Violation of platform guidelines\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/students/:id/ban",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "students", ":id", "ban"],
+              "variable": [
+                { "key": "id", "value": "STUDENT_UUID_HERE" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unban Student",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/admin/students/:id/unban",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "students", ":id", "unban"],
+              "variable": [
+                { "key": "id", "value": "STUDENT_UUID_HERE" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Warn Student",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Please adhere to conduct rules in chat.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/students/:id/warn",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "students", ":id", "warn"],
+              "variable": [
+                { "key": "id", "value": "STUDENT_UUID_HERE" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalidate User Sessions",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/admin/sessions/:userId/invalidate",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "sessions", ":userId", "invalidate"],
+              "variable": [
+                { "key": "userId", "value": "USER_UUID_HERE" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Teachers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "teachers"]
+            }
+          }
+        },
+        {
+          "name": "Manual Batch Enrollment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"STUDENT_UUID_HERE\",\n  \"batchId\": \"BATCH_UUID_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/enroll",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "enroll"]
+            }
+          }
+        },
+        {
+          "name": "Get System Settings",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "settings"]
+            }
+          }
+        },
+        {
+          "name": "Update Maintenance Mode",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/maintenance",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "maintenance"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Batches",
+      "item": [
+        {
+          "name": "List Batches",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/batches?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["batches"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Physics Crash Course 2026\",\n  \"description\": \"Comprehensive batch for physics revision\",\n  \"price\": 1999,\n  \"startDate\": \"2026-08-01T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/batches",
+              "host": ["{{baseUrl}}"],
+              "path": ["batches"]
+            }
+          }
+        },
+        {
+          "name": "Get Enrolled Batches",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/batches/enrolled",
+              "host": ["{{baseUrl}}"],
+              "path": ["batches", "enrolled"]
+            }
+          }
+        },
+        {
+          "name": "Enroll Student in Batch",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/batches/:id/enroll",
+              "host": ["{{baseUrl}}"],
+              "path": ["batches", ":id", "enroll"],
+              "variable": [
+                { "key": "id", "value": "BATCH_UUID_HERE" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Live Classes",
+      "item": [
+        {
+          "name": "List Live Classes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/live-classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["live-classes"]
+            }
+          }
+        },
+        {
+          "name": "Create Live Class",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Thermodynamics - Lecture 1\",\n  \"batchId\": \"BATCH_UUID_HERE\",\n  \"scheduledAt\": \"2026-08-02T10:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/live-classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["live-classes"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Recorded Videos",
+      "item": [
+        {
+          "name": "List Videos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/videos",
+              "host": ["{{baseUrl}}"],
+              "path": ["videos"]
+            }
+          }
+        },
+        {
+          "name": "Update Video Progress",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"watchDurationSeconds\": 300,\n  \"completed\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/videos/:id/progress",
+              "host": ["{{baseUrl}}"],
+              "path": ["videos", ":id", "progress"],
+              "variable": [
+                { "key": "id", "value": "VIDEO_UUID_HERE" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Doubts & Questions",
+      "item": [
+        {
+          "name": "Ask New Doubt",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"How to derive Work-Energy Theorem?\",\n  \"subjectId\": \"SUBJECT_UUID_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/doubts",
+              "host": ["{{baseUrl}}"],
+              "path": ["doubts"]
+            }
+          }
+        },
+        {
+          "name": "List Doubts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/doubts",
+              "host": ["{{baseUrl}}"],
+              "path": ["doubts"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Payments",
+      "item": [
+        {
+          "name": "Create Razorpay Payment Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batchId\": \"BATCH_UUID_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/create-order",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "create-order"]
+            }
+          }
+        },
+        {
+          "name": "Verify Payment Signature",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razorpayOrderId\": \"order_9A34zvxWpFx9V6\",\n  \"razorpayPaymentId\": \"pay_2938491823\",\n  \"razorpaySignature\": \"abc123def456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "verify"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. System Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

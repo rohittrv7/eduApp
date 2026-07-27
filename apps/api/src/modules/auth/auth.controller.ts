@@ -154,8 +154,7 @@ export class AuthController {
     @Req() req: Request & { user: any },
     @Res() res: Response,
   ): Promise<void> {
-    const frontendUrl = (process.env['FRONTEND_URL'] || 'http://localhost:3000')
-      .split(',')[0]
+    const frontendUrl = ((process.env['FRONTEND_URL'] || 'http://localhost:3000').split(',')[0] ?? '')
       .trim()
       .replace(/\/$/, '');
     const result = await this.authService.handleGoogleCallback(req.user, res);

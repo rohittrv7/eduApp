@@ -18,7 +18,7 @@ import { RedisService } from '../../common/redis/redis.service';
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
   private readonly provider: string;
-  private readonly OTP_TTL_SECONDS = 300; // 5 min
+  private readonly OTP_TTL_SECONDS = 600; // 10 min
   private firebaseApp?: admin.app.App;
   private mailer?: nodemailer.Transporter;
 
@@ -47,9 +47,11 @@ export class OtpService {
 
     if (this.config.get<string>('nodeEnv') !== 'production') {
       this.logger.log(`[DEV] Email OTP for ${email}: ${otp}`);
+      // Send email asynchronously in dev mode so HTTP request responds instantly (~30ms)
+      this.sendEmailViaNodemailer(email, otp).catch(() => {});
+    } else {
+      await this.sendEmailViaNodemailer(email, otp);
     }
-
-    await this.sendEmailViaNodemailer(email, otp);
   }
 
   /**
@@ -150,11 +152,12 @@ export class OtpService {
           </div>
         `,
       });
-    } catch (err) {
-      this.logger.error('Failed to send email OTP', err);
-      // In dev, don't block login — OTP is already logged to console above
+    } catch (err: any) {
+      this.logger.error(`Failed to send email OTP to ${email}: ${err?.message || err}`, err?.stack);
       if (this.config.get<string>('nodeEnv') === 'production') {
-        throw new BadRequestException('Failed to send OTP email. Please try again.');
+        throw new BadRequestException('Failed to send OTP email. Please check email credentials.');
+      } else {
+        this.logger.warn(`[DEV MODE] Email delivery failed due to SMTP credentials. Use DEV OTP above to log in: ${otp}`);
       }
     }
   }
@@ -206,11 +209,17 @@ export class OtpService {
       return;
     }
 
+    // Strip spaces from Gmail App Password if present (e.g. "erjq ohza uuda jmoj" -> "erjqohzauudajmoj")
+    const cleanPass = pass.replace(/\s+/g, '');
+
     this.mailer = nodemailer.createTransport({
       host: host || 'smtp.gmail.com',
       port: this.config.get<number>('email.port') || 587,
-      secure: false,
-      auth: { user, pass },
+      secure: this.config.get<number>('email.port') === 465,
+      auth: { user, pass: cleanPass },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
   }
 }

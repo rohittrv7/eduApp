@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module, OnModuleInit } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { DataSource } from 'typeorm';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation.schema';
 import { RedisModule } from './common/redis/redis.module';
@@ -55,9 +56,14 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
         database: config.get<string>('database.name'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
-        synchronize: true, // auto-create tables from entities (safe for dev)
-        poolSize: 10,
-        ssl: { rejectUnauthorized: false }, // Supabase always needs SSL
+        synchronize: false, // Disabled for fast startup and instant query execution
+        poolSize: 15,
+        ssl: { rejectUnauthorized: false },
+        extra: {
+          max: 15,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 3000,
+        },
       }),
     }),
     RedisModule,
@@ -94,4 +100,24 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements OnModuleInit {
+  private readonly logger = new Logger('Database');
+
+  constructor(private readonly dataSource: DataSource) {}
+
+  async onModuleInit() {
+    try {
+      if (this.dataSource.isInitialized) {
+        await this.dataSource.query('SELECT 1');
+        const dbName = this.dataSource.options.database;
+        const host = (this.dataSource.options as any).host ?? 'configured host';
+        this.logger.log(`✅ Database (PostgreSQL) connected successfully! [Host: ${host}, DB: ${dbName}]`);
+      } else {
+        this.logger.error('❌ Database (PostgreSQL) connection is not initialized!');
+      }
+    } catch (err: any) {
+      const reason = err.message || err.code || String(err);
+      this.logger.error(`❌ Database (PostgreSQL) connection failed! Reason: ${reason}`);
+    }
+  }
+}
