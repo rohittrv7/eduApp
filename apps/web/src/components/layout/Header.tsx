@@ -85,12 +85,12 @@ export function Header({ unreadCount = 0 }: HeaderProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={user.photo}
-                alt={user.fullName}
+                alt={user.fullName || 'User'}
                 className="h-8 w-8 rounded-full object-cover"
               />
             ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a56db] text-white text-sm font-semibold">
-                {user?.fullName?.[0]?.toUpperCase() ?? 'U'}
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a56db] text-white text-sm font-bold shadow-sm">
+                {(user?.fullName?.trim() || user?.email?.trim() || 'U').charAt(0).toUpperCase()}
               </div>
             )}
           </button>

@@ -1,8 +1,9 @@
 import {
   Body, Controller, Delete, Get, HttpCode, HttpStatus,
-  Param, ParseUUIDPipe, Patch, Post, UploadedFile,
+  Param, ParseUUIDPipe, Patch, Post, Res, UploadedFile,
   UseGuards, UseInterceptors,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { IsEmail, IsInt, IsString, Length, Matches, Min } from 'class-validator';
@@ -12,6 +13,7 @@ import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { OtpService } from '../auth/otp.service';
+import { TokenService } from '../auth/token.service';
 import { NotesService } from '../notes/notes.service';
 
 class UpdateEmailDto {
@@ -40,13 +42,21 @@ export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly otpService: OtpService,
+    private readonly tokenService: TokenService,
     private readonly notesService: NotesService,
   ) {}
 
   @Get('me')
-  async getProfile(@CurrentUser() user: User): Promise<User> {
+  async getProfile(
+    @CurrentUser() user: User,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<User> {
     await this.usersService.updateStreak(user.id);
-    return this.usersService.findById(user.id) as Promise<User>;
+    const dbUser = await this.usersService.findById(user.id);
+    if (dbUser && dbUser.role !== user.role) {
+      await this.tokenService.issueTokens(dbUser, res);
+    }
+    return (dbUser || user) as User;
   }
 
   @Patch('me')

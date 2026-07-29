@@ -2,7 +2,7 @@
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
-import { useAppSelector } from '@/store/store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useGetLeaderboardQuery } from '@/store/dashboardApi';
 import { Trophy, Medal } from 'lucide-react';
 
@@ -13,7 +13,7 @@ const RANK_COLORS: Record<number, string> = {
 };
 
 export default function LeaderboardPage() {
-  const user = useAppSelector((state) => state.auth.user);
+  const { user } = useAuthStore();
 
   // RTK Query — cached 5 min via keepUnusedDataFor (Req 7.2)
   const { data, isLoading } = useGetLeaderboardQuery();
@@ -50,7 +50,7 @@ export default function LeaderboardPage() {
           <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
             {entries.map((entry) => {
               // Highlight current user's row (Req 7.3)
-              const isCurrentUser = entry.userId === user?.id;
+              const isCurrentUser = entry.userId === user?.id || (user?.email && entry.fullName?.toLowerCase().includes(user.email.split('@')[0]?.toLowerCase()));
               return (
                 <div
                   key={entry.userId}
@@ -80,19 +80,21 @@ export default function LeaderboardPage() {
                         className="h-full w-full rounded-full object-cover"
                       />
                     ) : (
-                      (entry.fullName ?? 'S').charAt(0)
+                      (entry.fullName?.trim() || 'S').charAt(0).toUpperCase()
                     )}
                   </div>
 
                   {/* Display name only (Req 7.4) */}
                   <span
                     className={`flex-1 text-sm font-medium ${
-                      isCurrentUser ? 'text-[#1a56db]' : 'text-gray-900'
+                      isCurrentUser ? 'font-bold text-[#1a56db]' : 'text-gray-900'
                     }`}
                   >
-                    {entry.fullName}
+                    {entry.fullName || 'Student'}
                     {isCurrentUser && (
-                      <span className="ml-2 text-xs text-[#1a56db]">(You)</span>
+                      <span className="ml-2 rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-bold text-[#1a56db]">
+                        (Me)
+                      </span>
                     )}
                   </span>
 

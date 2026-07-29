@@ -4,10 +4,10 @@ import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
-import { useAppSelector } from '@/store/store';
+import { useAuthStore } from '@/stores/auth.store';
 import apiClient from '@/../lib/api-client';
 import {
-  Flame, Star, Clock, CheckCircle, Award, Share2, BookOpen, BarChart2
+  Flame, Star, Clock, CheckCircle, Award, Share2, BookOpen, BarChart2, User as UserIcon, Mail, Phone, Shield
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -110,42 +110,57 @@ function BadgeShareButton({ badge }: { badge: Achievement }) {
 }
 
 export default function StudentProfilePage() {
-  const user = useAppSelector((s) => s.auth.user);
+  const { user } = useAuthStore();
 
   const { data: stats, isLoading } = useQuery<ProfileStats>({
     queryKey: ['profile-stats'],
     queryFn: () => apiClient.get('/users/me/stats').then((r) => r.data),
   });
 
+  const displayName = user?.fullName?.trim() || user?.email?.split('@')[0] || 'User';
+  const initial = displayName.charAt(0).toUpperCase();
+
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-3xl space-y-6">
         {/* Profile Header */}
-        <div className="flex items-center gap-4 rounded-xl border bg-white p-6 shadow-sm">
-          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1a56db] text-2xl font-bold text-white">
+        <div className="flex flex-col gap-4 rounded-xl border bg-white p-6 shadow-sm sm:flex-row sm:items-center">
+          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1a56db] text-2xl font-bold text-white shadow-md">
             {user?.photo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.photo} alt={user.fullName} className="h-full w-full object-cover" />
+              <img src={user.photo} alt={displayName} className="h-full w-full object-cover" />
             ) : (
-              user?.fullName?.charAt(0) ?? '?'
+              initial
             )}
           </div>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-gray-900">{user?.fullName}</h1>
-            {user?.skillLevel && (
-              <span
-                className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${
-                  SKILL_COLORS[user.skillLevel] ?? 'bg-gray-100 text-gray-700'
-                }`}
-              >
-                {user.skillLevel}
-              </span>
-            )}
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
+              {user?.role && (
+                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold capitalize text-blue-700">
+                  {user.role}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+              {user?.email && (
+                <span className="flex items-center gap-1">
+                  <Mail size={13} className="text-gray-400" />
+                  {user.email}
+                </span>
+              )}
+              {user?.mobile && (
+                <span className="flex items-center gap-1">
+                  <Phone size={13} className="text-gray-400" />
+                  {user.mobile}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1 text-orange-500">
-            <Flame size={20} />
+          <div className="flex items-center gap-1.5 rounded-lg bg-orange-50 px-3 py-2 text-orange-600 border border-orange-200">
+            <Flame size={20} className="fill-orange-500 text-orange-500" />
             <span className="text-lg font-bold">{user?.streakCount ?? 0}</span>
-            <span className="text-xs text-gray-500">day streak</span>
+            <span className="text-xs text-gray-600">day streak</span>
           </div>
         </div>
 

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { BatchCard } from '@/components/ui/BatchCard';
-import { useAppSelector } from '@/store/store';
+import { useAuthStore } from '@/stores/auth.store';
 import apiClient from '@/../lib/api-client';
 
 function formatWatchTime(secs: number) {
@@ -51,7 +51,7 @@ function StreakCalendar({ streakCount }: { streakCount: number }) {
 
 export default function StudentDashboardPage() {
   const router = useRouter();
-  const user = useAppSelector((state) => state.auth.user);
+  const { user } = useAuthStore();
 
   const { data: watchSessions, isLoading: l1 } = useQuery<any[]>({
     queryKey: ['recent-watch'],
@@ -86,7 +86,8 @@ export default function StudentDashboardPage() {
   const streakCount = user?.streakCount ?? 0;
   const myRank = leaderboard?.myRank ?? null;
 
-  const firstName = user?.fullName?.split(' ')[0] ?? 'Student';
+  const displayName = user?.fullName?.trim() || user?.email?.split('@')[0] || 'Student';
+  const firstName = displayName.split(' ')[0] ?? 'Student';
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 

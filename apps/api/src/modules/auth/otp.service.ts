@@ -133,14 +133,51 @@ export class OtpService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
+  private async resolveIpv4Host(hostname: string): Promise<string> {
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      return hostname;
+    }
+    return new Promise((resolve) => {
+      dns.resolve4(hostname, (err, addrs) => {
+        if (!err && addrs && addrs.length > 0) {
+          resolve(addrs[0]!);
+        } else {
+          resolve(hostname);
+        }
+      });
+    });
+  }
+
   private async sendEmailViaNodemailer(email: string, otp: string): Promise<void> {
-    if (!this.mailer) {
-      this.logger.warn('Mailer not configured — OTP logged to console only');
+    const rawHost = this.config.get<string>('email.host') || 'smtp.gmail.com';
+    const user = this.config.get<string>('email.user');
+    const pass = this.config.get<string>('email.pass');
+
+    if (!user || !pass) {
+      this.logger.warn('Email credentials not configured — OTP logged to console only');
       return;
     }
+
+    const port = this.config.get<number>('email.port') || 587;
+    const ipv4Host = await this.resolveIpv4Host(rawHost);
+
+    const transporter = nodemailer.createTransport({
+      host: ipv4Host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
+      tls: {
+        servername: rawHost,
+        rejectUnauthorized: false,
+      },
+    } as any);
+
     try {
-      const from = this.config.get<string>('email.from') || this.config.get<string>('email.user');
-      await this.mailer.sendMail({
+      const from = this.config.get<string>('email.from') || user;
+      await transporter.sendMail({
         from: `"allEdu" <${from}>`,
         to: email,
         subject: 'Your Login OTP',
@@ -153,12 +190,13 @@ export class OtpService {
           </div>
         `,
       });
+      this.logger.log(`✅ Email OTP successfully sent to ${email}`);
     } catch (err: any) {
       this.logger.error(`Failed to send email OTP to ${email}: ${err?.message || err}`, err?.stack);
       if (this.config.get<string>('nodeEnv') === 'production') {
         throw new BadRequestException('Failed to send OTP email. Please check email credentials.');
       } else {
-        this.logger.warn(`[DEV MODE] Email delivery failed due to SMTP credentials. Use DEV OTP above to log in: ${otp}`);
+        this.logger.warn(`[DEV MODE] Email delivery failed. Use DEV OTP above to log in: ${otp}`);
       }
     }
   }
@@ -201,36 +239,6 @@ export class OtpService {
   }
 
   private initMailer(): void {
-    const host = this.config.get<string>('email.host');
-    const user = this.config.get<string>('email.user');
-    const pass = this.config.get<string>('email.pass');
-
-    if (!user || !pass) {
-      this.logger.warn('Email credentials not configured — OTP will only be logged in dev');
-      return;
-    }
-
-    // Strip spaces from Gmail App Password if present (e.g. "erjq ohza uuda jmoj" -> "erjqohzauudajmoj")
-    const cleanPass = pass.replace(/\s+/g, '');
-
-    this.mailer = nodemailer.createTransport({
-      host: host || 'smtp.gmail.com',
-      port: this.config.get<number>('email.port') || 587,
-      secure: this.config.get<number>('email.port') === 465,
-      auth: { user, pass: cleanPass },
-      family: 4, // Force IPv4 to avoid ENETUNREACH IPv6 errors
-      lookup: (hostname: string, _options: any, callback: any) => {
-        dns.lookup(hostname, { family: 4 }, (err, address, family) => {
-          callback(err, address, family);
-        });
-      },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-      tls: {
-        rejectUnauthorized: false,
-        servername: host || 'smtp.gmail.com',
-      },
-    } as any);
+    // Transporter created dynamically per request in sendEmailViaNodemailer with IPv4 host resolution
   }
 }
