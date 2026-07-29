@@ -18,6 +18,7 @@ const ContentSecurityPolicy = `
     ${imagekitEndpoint}
     https://img.youtube.com
     https://i.ytimg.com
+    https://images.unsplash.com
     https://www.gstatic.com/;
   font-src 'self' https://www.gstatic.com/;
   frame-src 'self' blob:
@@ -70,6 +71,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'img.youtube.com' },
       { protocol: 'https', hostname: 'i.ytimg.com' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
   },
   async headers() {

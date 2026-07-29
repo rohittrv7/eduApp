@@ -87,8 +87,10 @@ export class StudyMaterialsController {
 
     // data: URL (dev fallback) — decode and send directly
     if (url.startsWith('data:')) {
-      const [meta, base64] = url.split(',');
-      const mimeType = meta.split(':')[1].split(';')[0];
+      const parts = url.split(',');
+      const meta = parts[0] ?? '';
+      const base64 = parts[1] ?? '';
+      const mimeType = meta.split(':')[1]?.split(';')[0] ?? 'application/octet-stream';
       const buffer = Buffer.from(base64, 'base64');
       res.setHeader('Content-Type', mimeType);
       res.setHeader('Content-Disposition', 'inline');

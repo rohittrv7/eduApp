@@ -1,11 +1,14 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Star } from 'lucide-react';
 import { cn, formatINR } from '@/lib/utils';
+import { useAuthStore } from '@/stores/auth.store';
 
 export interface BatchCardProps {
   id: string;
+  slug?: string;
   thumbnail?: string | null;
   title: string;
   teacherName?: string;
@@ -19,6 +22,7 @@ export interface BatchCardProps {
 
 export function BatchCard({
   id,
+  slug,
   thumbnail,
   title,
   teacherName,
@@ -29,64 +33,85 @@ export function BatchCard({
   isFree = false,
   onEnroll,
 }: BatchCardProps) {
+  const router = useRouter();
+  const { user } = useAuthStore();
   const clampedRating = Math.min(5, Math.max(0, Math.round(rating)));
 
+  function handleEnrollClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (!user) {
+      // User is NOT logged in — redirect to login page first
+      const targetSlug = slug || id;
+      router.push(`/login?returnUrl=/batches/${targetSlug}`);
+      return;
+    }
+
+    if (onEnroll) {
+      onEnroll(id);
+    } else {
+      const targetSlug = slug || id;
+      router.push(`/batches/${targetSlug}`);
+    }
+  }
+
   return (
-    <div className="group flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-shadow hover:shadow-md">
+    <div className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:border-blue-300">
       {/* Thumbnail */}
-      <div className="relative aspect-video w-full overflow-hidden bg-gray-100">
+      <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
         {thumbnail && thumbnail.trim() !== '' ? (
           <Image
             src={thumbnail}
             alt={title}
             fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
             <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#1a56db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4">
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
             </svg>
           </div>
         )}
         {isEnrolled && (
-          <span className="absolute left-2 top-2 rounded-full bg-green-500 px-2 py-0.5 text-xs font-semibold text-white">
+          <span className="absolute left-3 top-3 rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs font-bold text-white shadow-md">
             Enrolled
           </span>
         )}
       </div>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="line-clamp-2 text-sm font-semibold text-gray-900">{title}</h3>
-        <p className="mt-1 text-xs text-gray-500">{teacherName}</p>
+      <div className="flex flex-1 flex-col p-5">
+        <h3 className="line-clamp-2 text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{title}</h3>
+        <p className="mt-1 text-xs text-slate-500 font-medium">{teacherName}</p>
 
         {/* Rating */}
-        <div className="mt-2 flex items-center gap-1">
+        <div className="mt-3 flex items-center gap-1">
           {Array.from({ length: 5 }).map((_, i) => (
             <Star
               key={i}
-              size={12}
+              size={14}
               className={cn(
-                i < clampedRating ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-200 text-gray-200'
+                i < clampedRating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'
               )}
             />
           ))}
           {ratingCount !== undefined && (
-            <span className="ml-1 text-xs text-gray-400">({ratingCount})</span>
+            <span className="ml-1 text-xs font-medium text-slate-400">({ratingCount})</span>
           )}
         </div>
 
         {/* Price + CTA */}
-        <div className="mt-3 flex items-center justify-between">
-          <span className="text-base font-bold text-gray-900">
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+          <span className="text-lg font-black text-slate-900">
             {isFree || price === 0 ? 'Free' : formatINR(price)}
           </span>
           {!isEnrolled && (
             <button
-              onClick={() => onEnroll?.(id)}
-              className="rounded-lg bg-[#1a56db] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800"
+              onClick={handleEnrollClick}
+              className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-blue-500/20 active:scale-95"
             >
               {isFree || price === 0 ? 'Enroll' : 'Buy Now'}
             </button>

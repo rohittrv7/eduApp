@@ -18,29 +18,36 @@ export class ReminderCron {
 
   @Cron('* * * * *') // every minute
   async sendLiveClassReminders(): Promise<void> {
-    const now = new Date();
-    const from = new Date(now.getTime() + 4 * 60 * 1000);
-    const to = new Date(now.getTime() + 6 * 60 * 1000);
+    try {
+      const now = new Date();
+      const from = new Date(now.getTime() + 4 * 60 * 1000);
+      const to = new Date(now.getTime() + 6 * 60 * 1000);
 
-    const upcomingClasses = await this.liveClassRepo.find({
-      where: {
-        scheduled_at: Between(from, to),
-        status: LiveClassStatus.APPROVED,
-      },
-    });
-
-    for (const liveClass of upcomingClasses) {
-      const enrollments = await this.enrollmentRepo.find({
-        where: { batch_id: liveClass.batch_id, is_active: true },
+      const upcomingClasses = await this.liveClassRepo.find({
+        where: {
+          scheduled_at: Between(from, to),
+          status: LiveClassStatus.APPROVED,
+        },
       });
 
-      for (const enrollment of enrollments) {
-        await this.notificationsService.send(enrollment.student_id, {
-          type: 'live_class_reminder',
-          title: 'Live Class Starting Soon',
-          body: `"${liveClass.title}" starts in 5 minutes`,
-          deepLink: `/live-classes/${liveClass.id}`,
+      for (const liveClass of upcomingClasses) {
+        const enrollments = await this.enrollmentRepo.find({
+          where: { batch_id: liveClass.batch_id, is_active: true },
         });
+
+        for (const enrollment of enrollments) {
+          await this.notificationsService.send(enrollment.student_id, {
+            type: 'live_class_reminder',
+            title: 'Live Class Starting Soon',
+            body: `"${liveClass.title}" starts in 5 minutes`,
+            deepLink: `/live-classes/${liveClass.id}`,
+          });
+        }
+      }
+    } catch (err: any) {
+      // Gracefully log DB initialization / missing relation errors during startup
+      if (!err?.message?.includes('relation') && !err?.message?.includes('does not exist')) {
+        console.error('Error in sendLiveClassReminders cron:', err?.message || err);
       }
     }
   }

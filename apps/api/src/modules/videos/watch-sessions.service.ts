@@ -58,7 +58,7 @@ export class WatchSessionsService {
       throw new NotFoundException(`Video ${videoId} not found`);
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().slice(0, 10);
     let session = await this.watchSessionRepo.findOne({
       where: { student_id: studentId, video_id: videoId, session_date: today },
     });
@@ -101,7 +101,7 @@ export class WatchSessionsService {
   }
 
   async getWatchSession(studentId: string, videoId: string): Promise<WatchSession | null> {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().slice(0, 10);
     return this.watchSessionRepo.findOne({
       where: { student_id: studentId, video_id: videoId, session_date: today },
     });

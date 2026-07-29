@@ -48,15 +48,15 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('database.host'),
-        port: config.get<number>('database.port'),
-        username: config.get<string>('database.username'),
-        password: config.get<string>('database.password'),
-        database: config.get<string>('database.name'),
+        type: 'postgres' as const,
+        host: config.getOrThrow<string>('database.host'),
+        port: config.getOrThrow<number>('database.port'),
+        username: config.getOrThrow<string>('database.username'),
+        password: config.getOrThrow<string>('database.password'),
+        database: config.getOrThrow<string>('database.name'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
-        synchronize: false, // Disabled for fast startup and instant query execution
+        synchronize: process.env['NODE_ENV'] !== 'production' || process.env['DB_SYNCHRONIZE'] === 'true',
         poolSize: 15,
         ssl: { rejectUnauthorized: false },
         extra: {
@@ -108,10 +108,7 @@ export class AppModule implements OnModuleInit {
   async onModuleInit() {
     try {
       if (this.dataSource.isInitialized) {
-        await this.dataSource.query('SELECT 1');
-        const dbName = this.dataSource.options.database;
-        const host = (this.dataSource.options as any).host ?? 'configured host';
-        this.logger.log(`✅ Database (PostgreSQL) connected successfully! [Host: ${host}, DB: ${dbName}]`);
+        this.logger.log('✅ Database (PostgreSQL) connected successfully!');
       } else {
         this.logger.error('❌ Database (PostgreSQL) connection is not initialized!');
       }

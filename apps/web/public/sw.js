@@ -1,22 +1,27 @@
-const APP_SHELL_CACHE = 'app-shell-v2';
-const API_CACHE = 'api-cache-v2';
-const IMAGE_CACHE = 'image-cache-v2';
+const APP_SHELL_CACHE = 'app-shell-v3';
+const API_CACHE = 'api-cache-v3';
+const IMAGE_CACHE = 'image-cache-v3';
 const OFFLINE_URL = '/offline';
-const API_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 const APP_SHELL_URLS = [
   '/',
   '/offline',
   '/manifest.json',
+  '/test-series',
+  '/batches',
 ];
 
-const API_NETWORK_FIRST_PATHS = [
+const API_PATHS = [
   '/api/v1/users/me',
   '/api/v1/batches',
   '/api/v1/notifications',
+  '/api/v1/test-series',
+  '/api/v1/announcements',
 ];
 
 const IMAGE_HOSTS = [
+  'images.unsplash.com',
+  'ik.imagekit.io',
   'res.cloudinary.com',
   'img.youtube.com',
   'i.ytimg.com',
@@ -26,9 +31,7 @@ const IMAGE_HOSTS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(APP_SHELL_CACHE).then((cache) =>
-      cache.addAll(APP_SHELL_URLS).catch(() => {
-        // Non-fatal: offline page may not exist yet during build
-      })
+      cache.addAll(APP_SHELL_URLS).catch(() => {})
     ).then(() => self.skipWaiting())
   );
 });
@@ -45,7 +48,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: routing strategies
+// Fetch: Instagram-style Stale-While-Revalidate & Cache-First Routing
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -53,31 +56,31 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET and chrome-extension requests
   if (request.method !== 'GET' || url.protocol === 'chrome-extension:') return;
 
-  // API network-first with stale fallback
-  if (API_NETWORK_FIRST_PATHS.some((p) => url.pathname.startsWith(p))) {
+  // API requests: Network first, fallback to Cache (Instagram style offline data)
+  if (API_PATHS.some((p) => url.pathname.startsWith(p))) {
     event.respondWith(networkFirstWithStaleFallback(request));
     return;
   }
 
-  // CDN images: stale-while-revalidate
-  if (IMAGE_HOSTS.includes(url.hostname)) {
+  // CDN & Unsplash images: Stale-While-Revalidate (Instant load from cache + lazy update)
+  if (IMAGE_HOSTS.some((host) => url.hostname.includes(host))) {
     event.respondWith(staleWhileRevalidate(request, IMAGE_CACHE));
     return;
   }
 
-  // Navigation requests: app shell cache-first, offline fallback
+  // Navigation requests: App Shell cache-first with offline fallback
   if (request.mode === 'navigate') {
     event.respondWith(navigationHandler(request));
     return;
   }
 
-  // Static assets (JS/CSS/fonts/icons): network-first for _next/static (hashed), cache-first for others
+  // Hashed static Next.js assets: Cache-first
   if (url.pathname.startsWith('/_next/static/')) {
-    event.respondWith(networkFirstWithStaleFallback(request));
+    event.respondWith(staleWhileRevalidate(request, APP_SHELL_CACHE));
     return;
   }
 
-  if (url.pathname.match(/\.(woff2?|ttf|otf|eot|png|svg|ico)$/)) {
+  if (url.pathname.match(/\.(woff2?|ttf|otf|eot|png|svg|ico|jpg|jpeg|webp|apk)$/)) {
     event.respondWith(cacheFirst(request, APP_SHELL_CACHE));
     return;
   }
@@ -86,33 +89,33 @@ self.addEventListener('fetch', (event) => {
 async function cacheFirst(request, cacheName) {
   const cached = await caches.match(request);
   if (cached) return cached;
-  const response = await fetch(request);
-  if (response.ok) {
-    const cache = await caches.open(cacheName);
-    cache.put(request, response.clone());
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    return cached || new Response('Offline Asset', { status: 503 });
   }
-  return response;
 }
 
+// Instagram-style API cache: Always return cached data when offline regardless of age
 async function networkFirstWithStaleFallback(request) {
   const cache = await caches.open(API_CACHE);
   try {
     const response = await fetch(request);
     if (response.ok) {
-      const cloned = response.clone();
-      const headers = new Headers(cloned.headers);
-      headers.set('sw-cached-at', Date.now().toString());
-      const body = await cloned.arrayBuffer();
-      cache.put(request, new Response(body, { status: cloned.status, headers }));
+      cache.put(request, response.clone());
     }
     return response;
   } catch {
+    // Offline mode: Return cached API response if available
     const cached = await cache.match(request);
-    if (cached) {
-      const cachedAt = parseInt(cached.headers.get('sw-cached-at') || '0', 10);
-      if (Date.now() - cachedAt < API_CACHE_TTL_MS) return cached;
-    }
-    return new Response(JSON.stringify({ error: 'Offline' }), {
+    if (cached) return cached;
+
+    return new Response(JSON.stringify({ error: 'Offline', message: 'Viewing cached mode offline.' }), {
       status: 503,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -126,6 +129,7 @@ async function staleWhileRevalidate(request, cacheName) {
     if (response.ok) cache.put(request, response.clone());
     return response;
   }).catch(() => null);
+
   return cached || fetchPromise;
 }
 
@@ -137,11 +141,11 @@ async function navigationHandler(request) {
     const cached = await caches.match(request);
     if (cached) return cached;
     const offline = await caches.match(OFFLINE_URL);
-    return offline || new Response('Offline', { status: 503 });
+    return offline || new Response('Offline Mode', { status: 503 });
   }
 }
 
-// Push notification handler (task 25.4)
+// Push notification handler
 self.addEventListener('push', (event) => {
   if (!event.data) return;
   let payload;
@@ -162,7 +166,7 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// Notification click handler (task 25.4)
+// Notification click handler
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const deepLink = event.notification.data?.deepLink || '/';
