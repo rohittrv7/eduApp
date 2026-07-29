@@ -12,6 +12,7 @@ import { Enrollment } from '../batches/entities/enrollment.entity';
 import { RecordedVideo } from '../videos/entities/recorded-video.entity';
 import { RedisService } from '../../common/redis/redis.service';
 import { CreateLiveClassDto } from './dto/create-live-class.dto';
+import { ReminderCron } from '../notifications/reminder.cron';
 
 function isValidYouTubeUrl(url: string): boolean {
   return /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|live\/|embed\/)|youtu\.be\/)[\w-]+/.test(url);
@@ -34,6 +35,7 @@ export class LiveClassesService {
     @InjectRepository(RecordedVideo)
     private readonly videoRepo: Repository<RecordedVideo>,
     private readonly redisService: RedisService,
+    private readonly reminderCron: ReminderCron,
   ) {}
 
   async create(teacherId: string, dto: CreateLiveClassDto): Promise<LiveClass> {
@@ -52,19 +54,23 @@ export class LiveClassesService {
       scheduled_at: new Date(dto.scheduled_at),
       status: LiveClassStatus.APPROVED,
     });
-    return this.liveClassRepo.save(liveClass);
+    const savedClass = await this.liveClassRepo.save(liveClass);
+    this.reminderCron.scheduleReminderForClass(savedClass);
+    return savedClass;
   }
 
   async approve(id: string): Promise<LiveClass> {
     const liveClass = await this.findOne(id);
     liveClass.status = LiveClassStatus.APPROVED;
-    return this.liveClassRepo.save(liveClass);
+    const savedClass = await this.liveClassRepo.save(liveClass);
+    this.reminderCron.scheduleReminderForClass(savedClass);
+    return savedClass;
   }
 
   async reject(id: string, reason?: string): Promise<LiveClass> {
     const liveClass = await this.findOne(id);
     liveClass.status = LiveClassStatus.REJECTED;
-    // Notification to teacher would be triggered here via NotificationService
+    this.reminderCron.cancelReminderForClass(id);
     return this.liveClassRepo.save(liveClass);
   }
 

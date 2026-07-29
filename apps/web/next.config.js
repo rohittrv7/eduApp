@@ -29,9 +29,15 @@ const ContentSecurityPolicy = `
     https://www.google.com/recaptcha/
     https://recaptcha.google.com/recaptcha/;
   connect-src 'self'
+    https:
+    http:
+    wss:
+    ws:
     ${apiUrl}
     ${socketUrl}
-    wss: ws:
+    https://*.onrender.com
+    http://localhost:*
+    https://localhost:*
     ${imagekitEndpoint}
     https://identitytoolkit.googleapis.com
     https://securetoken.googleapis.com

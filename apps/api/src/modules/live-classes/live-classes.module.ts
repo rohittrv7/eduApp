@@ -7,8 +7,13 @@ import { RecordedVideo } from '../videos/entities/recorded-video.entity';
 import { LiveClassesService } from './live-classes.service';
 import { LiveClassesController } from './live-classes.controller';
 
+import { NotificationsModule } from '../notifications/notifications.module';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([LiveClass, Attendance, Enrollment, RecordedVideo])],
+  imports: [
+    TypeOrmModule.forFeature([LiveClass, Attendance, Enrollment, RecordedVideo]),
+    NotificationsModule,
+  ],
   controllers: [LiveClassesController],
   providers: [LiveClassesService],
   exports: [LiveClassesService],

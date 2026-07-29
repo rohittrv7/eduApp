@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Menu, Search, Bell, LogOut, UserCircle, Settings } from 'lucide-react';
 import { useUIStore } from '@/stores/ui.store';
 import { useAuthStore } from '@/stores/auth.store';
-import apiClient from '@/../lib/api-client';
+import apiClient, { tokenStorage } from '@/../lib/api-client';
 
 interface HeaderProps {
   unreadCount?: number;
@@ -32,8 +32,9 @@ export function Header({ unreadCount = 0 }: HeaderProps) {
     } catch {
       // ignore
     } finally {
+      tokenStorage.clear();
       clearUser();
-      router.push('/login');
+      window.location.href = '/login';
     }
   }
 

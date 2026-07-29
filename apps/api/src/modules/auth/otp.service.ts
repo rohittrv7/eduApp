@@ -143,7 +143,7 @@ export class OtpService {
         from: `"allEdu" <${from}>`,
         to: email,
         subject: 'Your Login OTP',
-        text: `Your OTP is: ${otp}\n\nThis OTP is valid for 5 minutes. Do not share it with anyone.`,
+        text: `Your OTP is: ${otp}\n\nThis OTP is valid for 10 minutes. Do not share it with anyone.`,
         html: `
           <div style="font-family:sans-serif;max-width:400px;margin:auto">
             <h2 style="color:#1a56db">Your Login OTP</h2>
@@ -217,10 +217,14 @@ export class OtpService {
       port: this.config.get<number>('email.port') || 587,
       secure: this.config.get<number>('email.port') === 465,
       auth: { user, pass: cleanPass },
-      family: 4,
+      family: 4, // Force IPv4 to avoid ENETUNREACH IPv6 errors
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
       tls: {
         rejectUnauthorized: false,
+        servername: host || 'smtp.gmail.com',
       },
-    } as nodemailer.TransportOptions);
+    } as any);
   }
 }

@@ -23,6 +23,6 @@ import { ReminderCron } from './reminder.cron';
   ],
   controllers: [NotificationsController],
   providers: [NotificationsService, ReminderCron],
-  exports: [NotificationsService],
+  exports: [NotificationsService, ReminderCron],
 })
 export class NotificationsModule {}

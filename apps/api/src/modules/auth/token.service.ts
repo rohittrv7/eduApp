@@ -174,7 +174,14 @@ export class TokenService {
   }
 
   clearCookies(res: Response): void {
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+    const isProd = this.configService.get<string>('nodeEnv') === 'production';
+    const options = {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
+      path: '/',
+    };
+    res.clearCookie('access_token', options);
+    res.clearCookie('refresh_token', options);
   }
 }
