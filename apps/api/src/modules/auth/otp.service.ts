@@ -10,6 +10,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import * as dns from 'dns';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
 import { RedisService } from '../../common/redis/redis.service';
@@ -218,6 +219,11 @@ export class OtpService {
       secure: this.config.get<number>('email.port') === 465,
       auth: { user, pass: cleanPass },
       family: 4, // Force IPv4 to avoid ENETUNREACH IPv6 errors
+      lookup: (hostname: string, _options: any, callback: any) => {
+        dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+          callback(err, address, family);
+        });
+      },
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 15000,

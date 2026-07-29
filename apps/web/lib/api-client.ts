@@ -30,14 +30,29 @@ export const tokenStorage = {
   },
 };
 
+export function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+  }
+  if (
+    typeof window !== 'undefined' &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1'
+  ) {
+    return 'https://eduapp-1-tqo2.onrender.com/api/v1';
+  }
+  return 'http://localhost:3001/api/v1';
+}
+
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1',
+  baseURL: getApiBaseUrl(),
   withCredentials: false, // tokens via Authorization header, not cookies
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach access token to every request
+// Attach access token and dynamic baseURL to every request
 apiClient.interceptors.request.use((config) => {
+  config.baseURL = getApiBaseUrl();
   const token = tokenStorage.getAccess();
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;

@@ -25,7 +25,16 @@ function GoogleSuccessInner() {
       window.history.replaceState({}, '', cleanUrl);
     }
 
-    apiClient.get('/users/me')
+    const tokenToUse = accessToken || tokenStorage.getAccess();
+    if (!tokenToUse) {
+      router.replace('/login?message=google_failed');
+      return;
+    }
+
+    apiClient
+      .get('/users/me', {
+        headers: { Authorization: `Bearer ${tokenToUse}` },
+      })
       .then((r) => {
         const u = r.data;
         setUser({
@@ -40,7 +49,8 @@ function GoogleSuccessInner() {
         });
         router.replace(redirect);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Google Auth /users/me error:', err);
         tokenStorage.clear();
         router.replace('/login?message=google_failed');
       });
