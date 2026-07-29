@@ -1,9 +1,15 @@
 import 'reflect-metadata';
+import * as dns from 'dns';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
+
+// Prefer IPv4 over IPv6 for DNS resolution to avoid ENETUNREACH errors on hosts without IPv6 routing (e.g. Render)
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });

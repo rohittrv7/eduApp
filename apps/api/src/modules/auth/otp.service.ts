@@ -217,9 +217,10 @@ export class OtpService {
       port: this.config.get<number>('email.port') || 587,
       secure: this.config.get<number>('email.port') === 465,
       auth: { user, pass: cleanPass },
+      family: 4,
       tls: {
         rejectUnauthorized: false,
       },
-    });
+    } as nodemailer.TransportOptions);
   }
 }
