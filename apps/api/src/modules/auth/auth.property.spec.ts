@@ -50,6 +50,13 @@ function makeRefreshTokenRepository() {
   };
 }
 
+function makeUserRepository() {
+  return {
+    save: jest.fn().mockImplementation((user: unknown) => Promise.resolve(user)),
+    findOne: jest.fn(),
+  };
+}
+
 function makeMockResponse() {
   const cookies: Record<string, string> = {};
   return {
@@ -113,6 +120,7 @@ describe('Property 12: JWT Token Issuance Correctness', () => {
     jwtService = makeJwtService();
     tokenService = new TokenService(
       makeRefreshTokenRepository() as any,
+      makeUserRepository() as any,
       jwtService,
       makeConfigService() as any,
     );
@@ -135,6 +143,7 @@ describe('Property 12: JWT Token Issuance Correctness', () => {
 
           const accessToken = res._cookies['access_token'];
           expect(accessToken).toBeDefined();
+          if (typeof accessToken !== 'string') throw new Error('Access token cookie missing');
 
           const decoded = jwtService.verify<JwtPayload>(accessToken, {
             secret: ACCESS_SECRET,
@@ -169,6 +178,9 @@ describe('Property 12: JWT Token Issuance Correctness', () => {
           const afterIssuance = Math.floor(Date.now() / 1000);
 
           const accessToken = res._cookies['access_token'];
+          expect(accessToken).toBeDefined();
+          if (typeof accessToken !== 'string') throw new Error('Access token cookie missing');
+
           const decoded = jwtService.decode(accessToken) as {
             exp: number;
             iat: number;
