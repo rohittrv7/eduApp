@@ -18,6 +18,8 @@ import { RequestEmailOtpDto } from './dto/request-email-otp.dto';
 import { VerifyEmailOtpDto } from './dto/verify-email-otp.dto';
 import { RegisterEmailDto } from './dto/register-email.dto';
 import { LoginEmailDto } from './dto/login-email.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { LinkMobileDto } from './dto/link-mobile.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -51,6 +53,22 @@ export class AuthController {
   ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
     const deviceInfo = req.headers['user-agent'] ?? undefined;
     return this.authService.login(dto, res, deviceInfo);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ message: string }> {
+    await this.authService.forgotPassword(dto.email);
+    return { message: 'Password reset OTP sent to your email' };
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
+    await this.authService.resetPassword(dto);
+    return { message: 'Password reset successfully. Please log in with your new password.' };
   }
 
   @Public()

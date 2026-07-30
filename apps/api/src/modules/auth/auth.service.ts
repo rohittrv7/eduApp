@@ -5,6 +5,8 @@ import { TokenService } from './token.service';
 import { UsersService } from '../users/users.service';
 import { RegisterEmailDto } from './dto/register-email.dto';
 import { LoginEmailDto } from './dto/login-email.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 export interface GoogleProfile {
   googleId: string;
@@ -45,6 +47,19 @@ export class AuthService {
     const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
     await this.usersService.updateStreak(user.id);
     return { isNewUser: !user.full_name, accessToken, refreshToken };
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      throw new BadRequestException('No account found with this email address');
+    }
+    await this.otpService.sendPasswordResetOtp(email);
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    await this.otpService.verifyPasswordResetOtp(dto.email, dto.otp);
+    await this.usersService.resetPassword(dto.email, dto.newPassword);
   }
 
   async setUserRole(email: string, role: 'student' | 'teacher' | 'admin'): Promise<any> {

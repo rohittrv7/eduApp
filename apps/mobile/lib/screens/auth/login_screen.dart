@@ -57,6 +57,137 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showForgotPasswordDialog() {
+    final resetEmailController = TextEditingController(text: _emailController.text.trim());
+    final otpController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    int resetStep = 1;
+    String? dialogError;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(resetStep == 1 ? 'Forgot Password' : 'Reset Password'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (resetStep == 1) ...[
+                      const Text(
+                        'Enter your email address to receive a 6-digit password reset OTP.',
+                        style: TextStyle(fontSize: 13, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: resetEmailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(labelText: 'Email Address', hintText: 'name@domain.com'),
+                      ),
+                    ] else ...[
+                      Text(
+                        'Enter the 6-digit OTP sent to ${resetEmailController.text} and your new password.',
+                        style: const TextStyle(fontSize: 13, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: otpController,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        decoration: const InputDecoration(labelText: '6-Digit OTP', hintText: '123456'),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: newPasswordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(labelText: 'New Password', hintText: 'At least 6 characters'),
+                      ),
+                    ],
+                    if (dialogError != null) ...[
+                      const SizedBox(height: 12),
+                      Text(dialogError!, style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final auth = Provider.of<AuthProvider>(context, listen: false);
+                          setDialogState(() {
+                            isSubmitting = true;
+                            dialogError = null;
+                          });
+
+                          if (resetStep == 1) {
+                            final email = resetEmailController.text.trim();
+                            if (email.isEmpty) {
+                              setDialogState(() {
+                                dialogError = 'Email is required';
+                                isSubmitting = false;
+                              });
+                              return;
+                            }
+                            final ok = await auth.forgotPassword(email);
+                            if (ok) {
+                              setDialogState(() {
+                                resetStep = 2;
+                                isSubmitting = false;
+                              });
+                            } else {
+                              setDialogState(() {
+                                dialogError = 'Failed to send reset code. Account might not exist.';
+                                isSubmitting = false;
+                              });
+                            }
+                          } else {
+                            final email = resetEmailController.text.trim();
+                            final otp = otpController.text.trim();
+                            final newPass = newPasswordController.text;
+                            if (otp.length != 6 || newPass.length < 6) {
+                              setDialogState(() {
+                                dialogError = 'Valid 6-digit OTP and 6+ char password required';
+                                isSubmitting = false;
+                              });
+                              return;
+                            }
+                            final ok = await auth.resetPassword(email, otp, newPass);
+                            if (ok && context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Password reset successfully! Please sign in.')),
+                              );
+                            } else {
+                              setDialogState(() {
+                                dialogError = 'Invalid or expired OTP';
+                                isSubmitting = false;
+                              });
+                            }
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(resetStep == 1 ? 'Send OTP' : 'Reset Password'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _handleGoogleLogin() {
     showDialog(
       context: context,
@@ -317,6 +448,19 @@ class _LoginScreenState extends State<LoginScreen> {
                               return null;
                             },
                           ),
+
+                          if (!_isSignUp) ...[
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _showForgotPasswordDialog,
+                                child: const Text(
+                                  'Forgot Password?',
+                                  style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ),
+                            ),
+                          ],
 
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 12),

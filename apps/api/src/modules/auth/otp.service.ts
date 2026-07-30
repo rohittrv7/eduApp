@@ -70,6 +70,37 @@ export class OtpService {
     await this.redis.del(`otp:email:${email}`);
   }
 
+  /**
+   * Send Password Reset OTP via email
+   */
+  async sendPasswordResetOtp(email: string): Promise<void> {
+    const otp = this.generateOtp();
+    const hash = await bcrypt.hash(otp, 10);
+    await this.redis.set(`reset:email:${email}`, hash, this.OTP_TTL_SECONDS);
+
+    if (this.config.get<string>('nodeEnv') !== 'production') {
+      this.logger.log(`[DEV] Password Reset OTP for ${email}: ${otp}`);
+      this.sendEmailViaNodemailer(email, otp, 'Password Reset OTP').catch(() => {});
+    } else {
+      await this.sendEmailViaNodemailer(email, otp, 'Password Reset OTP');
+    }
+  }
+
+  /**
+   * Verify Password Reset OTP
+   */
+  async verifyPasswordResetOtp(email: string, otp: string): Promise<void> {
+    const hash = await this.redis.get(`reset:email:${email}`);
+    if (!hash) {
+      throw new BadRequestException('Password reset OTP has expired or was not requested');
+    }
+    const isValid = await bcrypt.compare(otp, hash);
+    if (!isValid) {
+      throw new BadRequestException('Invalid Password Reset OTP');
+    }
+    await this.redis.del(`reset:email:${email}`);
+  }
+
   // ─── Firebase Phone Auth flow ─────────────────────────────────────────────
 
   /**
@@ -148,7 +179,7 @@ export class OtpService {
     });
   }
 
-  private async sendEmailViaNodemailer(email: string, otp: string): Promise<void> {
+  private async sendEmailViaNodemailer(email: string, otp: string, subject = 'Your Login OTP'): Promise<void> {
     const rawHost = this.config.get<string>('email.host') || 'smtp.gmail.com';
     const user = this.config.get<string>('email.user');
     const pass = this.config.get<string>('email.pass');
@@ -180,13 +211,13 @@ export class OtpService {
       await transporter.sendMail({
         from: `"allEdu" <${from}>`,
         to: email,
-        subject: 'Your Login OTP',
+        subject,
         text: `Your OTP is: ${otp}\n\nThis OTP is valid for 10 minutes. Do not share it with anyone.`,
         html: `
           <div style="font-family:sans-serif;max-width:400px;margin:auto">
-            <h2 style="color:#1a56db">Your Login OTP</h2>
+            <h2 style="color:#1a56db">${subject}</h2>
             <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#111">${otp}</p>
-            <p style="color:#666">Valid for 5 minutes. Do not share this OTP with anyone.</p>
+            <p style="color:#666">Valid for 10 minutes. Do not share this OTP with anyone.</p>
           </div>
         `,
       });

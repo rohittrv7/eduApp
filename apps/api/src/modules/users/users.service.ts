@@ -90,6 +90,18 @@ export class UsersService {
     return user;
   }
 
+  async resetPassword(email: string, newPassword: string): Promise<void> {
+    const user = await this.findByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('User with this email does not exist');
+    }
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    await this.userRepository.update(user.id, {
+      password_hash,
+      session_version: (user.session_version || 0) + 1,
+    });
+  }
+
   async findOrCreateByMobile(mobile: string): Promise<{ user: User; isNewUser: boolean }> {
     let user = await this.findByMobile(mobile);
     let isNewUser = false;

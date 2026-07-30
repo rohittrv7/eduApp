@@ -101,6 +101,41 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Forgot Password (request OTP)
+  Future<bool> forgotPassword(String email) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _apiClient.post('/auth/forgot-password', data: {'email': email});
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Reset Password
+  Future<bool> resetPassword(String email, String otp, String newPassword) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _apiClient.post(
+        '/auth/reset-password',
+        data: {'email': email, 'otp': otp, 'newPassword': newPassword},
+      );
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Send OTP (Email Mode by default)
   Future<bool> sendOtp(String email) async {
     _isLoading = true;
