@@ -185,26 +185,29 @@ export class OtpService {
     const pass = this.config.get<string>('email.pass');
 
     if (!user || !pass) {
-      this.logger.warn('Email credentials not configured — OTP logged to console only');
+      this.logger.warn('Email credentials not configured (EMAIL_USER / EMAIL_PASS missing)');
       return;
     }
 
-    const port = this.config.get<number>('email.port') || 587;
-    const ipv4Host = await this.resolveIpv4Host(rawHost);
+    // Default to port 465 (SSL) for Gmail on cloud hosts like Render to avoid port 587 timeouts
+    const defaultPort = rawHost.includes('gmail') ? 465 : 587;
+    const port = this.config.get<number>('email.port') || defaultPort;
+    const isSecure = port === 465;
 
     const transporter = nodemailer.createTransport({
-      host: ipv4Host,
+      host: rawHost,
       port,
-      secure: port === 465,
+      secure: isSecure,
+      requireTLS: !isSecure,
       auth: { user, pass },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 20000,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
       tls: {
         servername: rawHost,
         rejectUnauthorized: false,
       },
-    } as any);
+    });
 
     try {
       const from = this.config.get<string>('email.from') || user;
@@ -214,10 +217,10 @@ export class OtpService {
         subject,
         text: `Your OTP is: ${otp}\n\nThis OTP is valid for 10 minutes. Do not share it with anyone.`,
         html: `
-          <div style="font-family:sans-serif;max-width:400px;margin:auto">
-            <h2 style="color:#1a56db">${subject}</h2>
-            <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#111">${otp}</p>
-            <p style="color:#666">Valid for 10 minutes. Do not share this OTP with anyone.</p>
+          <div style="font-family:sans-serif;max-width:400px;margin:auto;padding:20px;border:1px solid #eee;border-radius:12px">
+            <h2 style="color:#1a56db;margin-top:0">${subject}</h2>
+            <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#111;margin:16px 0">${otp}</p>
+            <p style="color:#666;font-size:14px">Valid for 10 minutes. Do not share this OTP with anyone.</p>
           </div>
         `,
       });
@@ -227,7 +230,7 @@ export class OtpService {
       if (this.config.get<string>('nodeEnv') === 'production') {
         throw new BadRequestException('Failed to send OTP email. Please check email credentials.');
       } else {
-        this.logger.warn(`[DEV MODE] Email delivery failed. Use DEV OTP above to log in: ${otp}`);
+        this.logger.warn(`[DEV MODE] Email delivery failed. Use DEV OTP above: ${otp}`);
       }
     }
   }
