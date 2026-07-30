@@ -121,9 +121,9 @@ export default function StudentDashboardPage() {
             color="bg-orange-50"
           />
           <StatCard
-            icon={<Clock size={18} className="text-blue-500" />}
-            label="Watch Time"
-            value={stats ? formatWatchTime(stats.totalWatchTimeSecs ?? 0) : '—'}
+            icon={<BookOpen size={18} className="text-blue-500" />}
+            label="My Batches"
+            value={enrolledBatches.length > 0 ? `${enrolledBatches.length}` : '0'}
             color="bg-blue-50"
           />
           <StatCard
@@ -178,8 +178,15 @@ export default function StudentDashboardPage() {
                 {enrolledBatches.map((batch: any) => (
                   <Link key={batch.id} href={`/student/batches/${batch.id}`}>
                     <div className="relative">
-                      <BatchCard id={batch.id} thumbnail={batch.thumbnail} title={batch.title}
-                        teacherName={batch.teacherName} price={batch.price} rating={batch.rating} isEnrolled />
+                      <BatchCard
+                        id={batch.id}
+                        thumbnail={batch.thumbnail ?? batch.thumbnail_url}
+                        title={batch.title ?? batch.name}
+                        teacherName={batch.teacherName ?? batch.teacher?.full_name}
+                        price={batch.price ?? 0}
+                        rating={batch.rating ?? 5}
+                        isEnrolled
+                      />
                       <div className="absolute bottom-0 left-0 right-0 h-1 rounded-b-xl bg-gray-200">
                         <div className="h-full rounded-b-xl bg-green-500" style={{ width: `${batch.progressPercent ?? 0}%` }} />
                       </div>

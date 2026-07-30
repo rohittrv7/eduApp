@@ -323,8 +323,17 @@ export class BatchesService {
     return this.batchRepo.save(batch);
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, requesterId?: string, requesterRole?: string): Promise<void> {
     const batch = await this.findOne(id);
+    if (requesterRole && requesterRole !== 'admin' && batch.teacher_id !== requesterId) {
+      throw new ForbiddenException('You do not own this batch');
+    }
+    const enrolledCount = await this.enrollmentRepo.count({
+      where: { batch_id: id, is_active: true },
+    });
+    if (enrolledCount > 0) {
+      throw new BadRequestException('Cannot delete batch because students are already enrolled in it');
+    }
     await this.batchRepo.remove(batch);
   }
 

@@ -100,16 +100,16 @@ export default async function BatchDetailPage({ params }: BatchDetailPageProps) 
           <div className="lg:col-span-2 space-y-6">
             {/* Batch Header */}
             <div className="rounded-xl bg-white p-6 shadow-sm">
-              <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-gray-100 mb-5">
+              <div className="relative w-full overflow-hidden rounded-lg bg-slate-900 flex items-center justify-center p-2 mb-5">
                 {batch.thumbnail && (batch.thumbnail.startsWith('http://') || batch.thumbnail.startsWith('https://') || batch.thumbnail.startsWith('/')) ? (
-                <Image
-                  src={batch.thumbnail}
-                  alt={batch.title}
-                  fill
-                  className="object-cover"
-                />
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={batch.thumbnail}
+                    alt={batch.title}
+                    className="max-h-96 w-full object-contain rounded"
+                  />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+                  <div className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
                     <BookOpen size={40} className="text-[#1a56db] opacity-40" />
                   </div>
                 )}

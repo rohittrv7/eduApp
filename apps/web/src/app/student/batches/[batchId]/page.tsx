@@ -215,7 +215,7 @@ function PurchasePrompt({ batch, onEnrollFree, onPay, loading, onClose }: {
           <Lock size={22} className="text-orange-500" />
         </div>
         <h3 className="text-lg font-bold text-gray-900">Content Locked</h3>
-        <p className="mt-1 text-sm text-gray-500">Ye video dekhne ke liye pehle batch mein enroll karo.</p>
+        <p className="mt-1 text-sm text-gray-500">Please enroll in this batch to access this video lesson.</p>
         <div className="mt-4 rounded-lg border p-4">
           <p className="font-semibold text-gray-800">{batch.name}</p>
           <p className="mt-1 text-2xl font-bold text-[#1a56db]">{batch.is_free ? 'Free' : `₹${batch.price}`}</p>
@@ -343,8 +343,10 @@ export default function BatchDetailPage() {
         {/* Batch Info Card */}
         <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
           {data.thumbnail ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={data.thumbnail} alt={data.name} className="h-44 w-full object-cover" />
+            <div className="w-full bg-slate-900 flex items-center justify-center p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={data.thumbnail} alt={data.name} className="max-h-80 w-full object-contain rounded-lg" />
+            </div>
           ) : (
             <div className="flex h-32 items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
               <BookOpen size={40} className="text-[#1a56db] opacity-40" />
@@ -373,7 +375,7 @@ export default function BatchDetailPage() {
               {isEnrolled ? (
                 <div className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3">
                   <CheckCircle size={18} className="text-green-600" />
-                  <span className="text-sm font-medium text-green-700">Aap is batch mein enrolled hain</span>
+                  <span className="text-sm font-semibold text-green-700">You are enrolled in this batch</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-between rounded-xl border-2 border-dashed border-[#1a56db]/30 bg-blue-50/40 p-4">
@@ -457,13 +459,13 @@ export default function BatchDetailPage() {
               {isEnrolled ? (
                 <>
                   <BookOpen size={36} className="mx-auto mb-3 text-gray-300" />
-                  <p className="text-sm text-gray-500">Abhi koi video content nahi hai. Teacher jald hi add karega.</p>
+                  <p className="text-sm text-gray-500">No video lessons available yet. Your instructor will upload content soon.</p>
                 </>
               ) : (
                 <>
                   <Lock size={36} className="mx-auto mb-3 text-gray-300" />
                   <p className="text-sm text-gray-500">
-                    {data.is_free ? 'Enroll karo content dekhne ke liye' : `₹${data.price} mein purchase karo content unlock karne ke liye`}
+                    {data.is_free ? 'Enroll for free to access course content' : `Purchase for ₹${data.price} to unlock full course access`}
                   </p>
                   <button
                     onClick={data.is_free ? handleEnrollFree : handlePay}
@@ -485,7 +487,7 @@ export default function BatchDetailPage() {
             {visibleLiveClasses.length === 0 ? (
               <div className="rounded-xl border bg-white p-8 text-center shadow-sm">
                 <Radio size={36} className="mx-auto mb-3 text-gray-300" />
-                <p className="text-sm text-gray-500">Abhi koi live class schedule nahi hai.</p>
+                <p className="text-sm text-gray-500">No live classes scheduled at the moment.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -504,7 +506,7 @@ export default function BatchDetailPage() {
             {studyMaterials.length === 0 ? (
               <div className="rounded-xl border bg-white p-8 text-center shadow-sm">
                 <p className="text-2xl mb-2">📄</p>
-                <p className="text-sm text-gray-500">Abhi koi notes nahi hai. Teacher jald hi add karega.</p>
+                <p className="text-sm text-gray-500">No study materials or notes available yet.</p>
               </div>
             ) : (
               <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
@@ -536,7 +538,7 @@ export default function BatchDetailPage() {
                     ) : (
                       !isEnrolled && !m.is_free_preview ? (
                         <span className="shrink-0 rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-400">
-                          🔒 Enroll karo
+                          🔒 Locked
                         </span>
                       ) : null
                     )}

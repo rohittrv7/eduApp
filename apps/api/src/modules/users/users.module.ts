@@ -11,9 +11,11 @@ import { AuthModule } from '../auth/auth.module';
 import { AdminModule } from '../admin/admin.module';
 import { NotesService } from '../notes/notes.service';
 
+import { Enrollment } from '../batches/entities/enrollment.entity';
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, WatchSession, QuizAttempt, PersonalNote]),
+    TypeOrmModule.forFeature([User, WatchSession, QuizAttempt, PersonalNote, Enrollment]),
     forwardRef(() => AuthModule),
     forwardRef(() => AdminModule),
   ],

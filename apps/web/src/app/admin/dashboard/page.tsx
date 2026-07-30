@@ -19,8 +19,8 @@ function RevenueBarChart({ data }: { data: Array<{ date: string; amount: number 
             <rect key={i} x={i * 10} y={20 + Math.random() * 40} width={8} height={40} fill="#1a56db" rx={2} />
           ))}
         </svg>
-        <p className="mt-3 text-sm font-medium">Abhi koi revenue data nahi hai</p>
-        <p className="text-xs text-gray-300 mt-1">Jab students enroll karenge tab chart yahan dikhega</p>
+        <p className="mt-3 text-sm font-medium">No revenue data available</p>
+        <p className="text-xs text-gray-300 mt-1">Revenue chart will populate as students enroll</p>
       </div>
     );
   }
@@ -160,10 +160,10 @@ export default function AdminDashboardPage() {
         {/* Metric Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            label="Aaj ki Revenue"
+            label="Today's Revenue"
             value={revenue.today}
             prefix="₹"
-            sub={`Is hafte: ₹${revenue.week.toLocaleString('en-IN')} · Is mahine: ₹${revenue.month.toLocaleString('en-IN')}`}
+            sub={`This week: ₹${revenue.week.toLocaleString('en-IN')} · This month: ₹${revenue.month.toLocaleString('en-IN')}`}
             color="green"
           />
           <MetricCard
@@ -172,9 +172,9 @@ export default function AdminDashboardPage() {
             color="blue"
           />
           <MetricCard
-            label="Aaj ke Naye Enrollments"
+            label="Today's New Enrollments"
             value={enrollments.today}
-            sub={`Hafte mein: ${enrollments.week} · Mahine mein: ${enrollments.month}`}
+            sub={`This week: ${enrollments.week} · This month: ${enrollments.month}`}
             color="purple"
           />
           <MetricCard

@@ -58,8 +58,8 @@ function VideoEngagementRow({ video }: { video: TeacherVideo }) {
         </div>
 
         <div className="shrink-0 text-right text-xs text-gray-500">
-          <p>{video.viewCount.toLocaleString()} views</p>
-          <p>Avg {formatDuration(video.avgWatchTimeSecs)}</p>
+          <p>{(video.viewCount ?? 0).toLocaleString()} views</p>
+          <p>Avg {formatDuration(video.avgWatchTimeSecs ?? 0)}</p>
         </div>
       </button>
 

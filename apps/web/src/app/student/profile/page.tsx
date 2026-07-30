@@ -20,6 +20,7 @@ interface Achievement {
 interface ProfileStats {
   totalWatchTimeSecs: number;
   quizAvgScore: number;
+  quizzesAttempted?: number;
   attendancePercent: number;
   enrolledBatchCount: number;
   cumulativeScore: number;
@@ -166,33 +167,14 @@ export default function StudentProfilePage() {
 
         {/* Stats Grid */}
         {isLoading ? (
-          <SkeletonLoader variant="card" count={4} />
+          <SkeletonLoader variant="card" count={3} />
         ) : stats ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <StatCard icon={<Clock size={18} className="text-blue-500" />} label="Watch Time" value={formatWatchTime(stats.totalWatchTimeSecs)} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatCard icon={<BookOpen size={18} className="text-purple-500" />} label="Batches" value={String(stats.enrolledBatchCount ?? 0)} />
             <StatCard icon={<Star size={18} className="text-yellow-500" />} label="Avg Quiz Score" value={`${(stats.quizAvgScore ?? 0).toFixed(0)}%`} />
             <StatCard icon={<CheckCircle size={18} className="text-green-500" />} label="Attendance" value={`${(stats.attendancePercent ?? 0).toFixed(0)}%`} />
-            <StatCard icon={<BookOpen size={18} className="text-purple-500" />} label="Batches" value={String(stats.enrolledBatchCount)} />
           </div>
         ) : null}
-
-        {/* Quick Links — coming soon */}
-        {/* <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { href: '/student/profile/bookmarks', label: 'Bookmarks' },
-            { href: '/student/profile/downloads', label: 'Downloads' },
-            { href: '/student/profile/payments', label: 'Payments' },
-            { href: '/student/profile/certificates', label: 'Certificates' },
-          ].map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className="rounded-xl border bg-white p-4 text-center text-sm font-medium text-gray-700 shadow-sm hover:border-[#1a56db] hover:text-[#1a56db]"
-            >
-              {label}
-            </Link>
-          ))}
-        </div> */}
 
         {/* Progress Reports Link */}
         <Link
@@ -204,40 +186,68 @@ export default function StudentProfilePage() {
           <span className="ml-auto text-sm text-gray-400">Weekly &amp; Monthly →</span>
         </Link>
 
-        {/* Achievements */}
+        {/* Achievements & Badges Unlock List */}
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-900">
             <Award size={18} className="text-yellow-500" />
-            Achievements
+            Achievements &amp; Badges
           </h2>
-          {isLoading ? (
-            <SkeletonLoader variant="list-item" count={3} />
-          ) : stats?.achievements?.length ? (
-            <div className="space-y-2">
-              {stats.achievements.map((badge) => (
-                <div
-                  key={badge.id}
-                  className="flex items-center gap-3 rounded-xl border bg-white p-4 shadow-sm"
-                >
-                  <span
-                    className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                      BADGE_COLORS[badge.badgeType] ?? 'bg-gray-100 text-gray-700'
-                    }`}
-                  >
-                    {BADGE_LABELS[badge.badgeType] ?? badge.badgeType}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {new Date(badge.earnedAt).toLocaleDateString()}
-                  </span>
-                  <BadgeShareButton badge={badge} />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {[
+              {
+                type: 'seven_day_streak',
+                name: '7-Day Streak',
+                criteria: 'Maintain a 7-day daily learning streak',
+                icon: '🔥',
+                earned: (user?.streakCount ?? 0) >= 7,
+              },
+              {
+                type: 'quiz_master',
+                name: 'Quiz Master',
+                criteria: 'Score 80%+ on 5 or more quizzes',
+                icon: '🎯',
+                earned: (stats?.quizzesAttempted ?? 0) >= 5 && (stats?.quizAvgScore ?? 0) >= 80,
+              },
+              {
+                type: 'top_10_leaderboard',
+                name: 'Top 10 Scholar',
+                criteria: 'Reach the Top 10 on the global student leaderboard',
+                icon: '🏆',
+                earned: false,
+              },
+              {
+                type: 'perfect_attendance',
+                name: 'Perfect Attendance',
+                criteria: 'Maintain 100% attendance in live classes',
+                icon: '✅',
+                earned: (stats?.attendancePercent ?? 0) >= 100,
+              },
+            ].map((badge) => (
+              <div
+                key={badge.type}
+                className={`flex items-start gap-3 rounded-xl border p-4 shadow-sm transition-all ${
+                  badge.earned
+                    ? 'border-green-200 bg-green-50/50'
+                    : 'border-slate-200 bg-white opacity-80'
+                }`}
+              >
+                <div className="text-2xl">{badge.icon}</div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-slate-900 text-sm">{badge.name}</h3>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                        badge.earned ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {badge.earned ? 'Unlocked' : 'Locked'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">{badge.criteria}</p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="rounded-xl border bg-white p-6 text-center text-sm text-gray-400">
-              No badges earned yet. Keep learning!
-            </p>
-          )}
+              </div>
+            ))}
+          </div>
         </section>
       </div>
     </DashboardLayout>

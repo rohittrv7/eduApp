@@ -28,7 +28,7 @@ export class LeaderboardService {
       const users = await this.userRepo
         .createQueryBuilder('u')
         .select(['u.id', 'u.full_name', 'u.profile_photo', 'u.skill_level', 'u.cumulative_score'])
-        .where('u.is_banned = false')
+        .where("u.is_banned = false AND u.role = 'student'")
         .orderBy('u.cumulative_score', 'DESC')
         .limit(10)
         .getMany();
@@ -54,7 +54,7 @@ export class LeaderboardService {
         // Calculate rank outside top 10
         const count = await this.userRepo
           .createQueryBuilder('u')
-          .where('u.is_banned = false')
+          .where("u.is_banned = false AND u.role = 'student'")
           .andWhere(
             'u.cumulative_score > (SELECT cumulative_score FROM users WHERE id = :id)',
             { id: requestingStudentId },

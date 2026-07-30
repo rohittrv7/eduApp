@@ -365,6 +365,14 @@ export const teacherApi = baseApi.injectEndpoints({
       query: ({ id }) => ({ url: `/study-materials/${id}`, method: 'DELETE' }),
       invalidatesTags: (_r, _e, { batchId }) => [{ type: 'StudyMaterials', id: batchId }],
     }),
+    updateTeacherBatch: builder.mutation<any, { id: string; body: any }>({
+      query: ({ id, body }) => ({ url: `/batches/${id}`, method: 'PATCH', body }),
+      invalidatesTags: ['Batch'],
+    }),
+    deleteTeacherBatch: builder.mutation<void, string>({
+      query: (id) => ({ url: `/batches/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Batch'],
+    }),
     getStudyMaterialUrl: builder.query<{ url: string; expires_at: string }, string>({
       query: (id) => `/study-materials/${id}/url`,
     }),
@@ -394,6 +402,8 @@ export const {
   useDeleteSubjectMutation,
   useGetTeacherBatchesQuery,
   useCreateTeacherBatchMutation,
+  useUpdateTeacherBatchMutation,
+  useDeleteTeacherBatchMutation,
   useGetTeacherBatchDetailQuery,
   useGetChaptersBySubjectQuery,
   useCreateChapterMutation,

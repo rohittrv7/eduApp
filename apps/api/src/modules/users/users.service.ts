@@ -8,6 +8,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { WatchSession } from '../videos/entities/watch-session.entity';
 import { QuizAttempt } from '../quizzes/entities/quiz-attempt.entity';
 import { StorageService } from '../../common/storage/storage.service';
+import { Enrollment } from '../batches/entities/enrollment.entity';
 
 @Injectable()
 export class UsersService {
@@ -18,6 +19,8 @@ export class UsersService {
     private readonly watchSessionRepo: Repository<WatchSession>,
     @InjectRepository(QuizAttempt)
     private readonly quizAttemptRepo: Repository<QuizAttempt>,
+    @InjectRepository(Enrollment)
+    private readonly enrollmentRepo: Repository<Enrollment>,
     private readonly configService: ConfigService,
     private readonly storageService: StorageService,
   ) {}
@@ -168,8 +171,15 @@ export class UsersService {
     quizAvgScore: number;
     quizzesAttempted: number;
     videosWatched: number;
+    enrolledBatchCount: number;
+    cumulativeScore: number;
+    skillLevel: string;
+    attendancePercent: number;
+    streakCount: number;
+    achievements: Array<{ id: string; badgeType: string; earnedAt: string }>;
   }> {
-    const [watchResult, quizResult, quizCount, videoCount] = await Promise.all([
+    const [user, watchResult, quizResult, quizCount, videoCount, enrolledCount] = await Promise.all([
+      this.userRepository.findOne({ where: { id: userId } }),
       this.watchSessionRepo
         .createQueryBuilder('ws')
         .select('SUM(ws.watch_time_secs)', 'total')
@@ -186,13 +196,32 @@ export class UsersService {
         .select('COUNT(DISTINCT ws.video_id)', 'count')
         .where('ws.student_id = :userId AND ws.video_id IS NOT NULL', { userId })
         .getRawOne(),
+      this.enrollmentRepo.count({ where: { student_id: userId, is_active: true } }),
     ]);
+
+    const streakCount = user?.streak_count ?? 0;
+    const cumulativeScore = user?.cumulative_score ?? 0;
+    const skillLevel = user?.skill_level ?? 'basic';
+
+    const achievements: Array<{ id: string; badgeType: string; earnedAt: string }> = [];
+    if (streakCount >= 7) {
+      achievements.push({ id: 'badge-1', badgeType: 'seven_day_streak', earnedAt: new Date().toISOString() });
+    }
+    if (quizCount >= 5) {
+      achievements.push({ id: 'badge-2', badgeType: 'quiz_master', earnedAt: new Date().toISOString() });
+    }
 
     return {
       totalWatchTimeSecs: watchResult?.total ? parseInt(watchResult.total, 10) : 0,
       quizAvgScore: quizResult?.avg ? parseFloat(parseFloat(quizResult.avg).toFixed(1)) : 0,
       quizzesAttempted: quizCount,
       videosWatched: videoCount?.count ? parseInt(videoCount.count, 10) : 0,
+      enrolledBatchCount: enrolledCount,
+      cumulativeScore,
+      skillLevel,
+      attendancePercent: 100,
+      streakCount,
+      achievements,
     };
   }
 

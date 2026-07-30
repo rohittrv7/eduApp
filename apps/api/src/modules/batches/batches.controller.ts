@@ -79,9 +79,9 @@ export class BatchesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(UserRole.ADMIN)
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.batchesService.remove(id);
+  @Roles(UserRole.TEACHER, UserRole.ADMIN)
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.batchesService.remove(id, user.id, user.role);
   }
 
   @Post(':id/enroll')
