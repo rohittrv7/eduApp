@@ -39,6 +39,68 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Login with Email & Password
+  Future<bool> loginEmail(String email, String password) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await _apiClient.post(
+        '/auth/login',
+        data: {'email': email, 'password': password},
+      );
+
+      final accessToken = response.data['accessToken'] as String?;
+      final refreshToken = response.data['refreshToken'] as String?;
+
+      if (accessToken != null) {
+        await _storage.write(key: AppConstants.keyAccessToken, value: accessToken);
+        if (refreshToken != null) {
+          await _storage.write(key: AppConstants.keyRefreshToken, value: refreshToken);
+        }
+        await fetchProfile();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Register with Email & Password
+  Future<bool> registerEmail(String email, String password, String fullName) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await _apiClient.post(
+        '/auth/register',
+        data: {'email': email, 'password': password, 'full_name': fullName},
+      );
+
+      final accessToken = response.data['accessToken'] as String?;
+      final refreshToken = response.data['refreshToken'] as String?;
+
+      if (accessToken != null) {
+        await _storage.write(key: AppConstants.keyAccessToken, value: accessToken);
+        if (refreshToken != null) {
+          await _storage.write(key: AppConstants.keyRefreshToken, value: refreshToken);
+        }
+        await fetchProfile();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Send OTP (Email Mode by default)
   Future<bool> sendOtp(String email) async {
     _isLoading = true;

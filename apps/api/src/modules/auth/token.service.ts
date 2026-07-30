@@ -11,8 +11,10 @@ import { User } from '../users/entities/user.entity';
 export interface JwtPayload {
   sub: string;
   role: string;
-  mobile: string;
+  mobile?: string | null;
+  email?: string | null;
   full_name?: string;
+  session_version?: number;
 }
 
 @Injectable()
@@ -20,19 +22,27 @@ export class TokenService {
   constructor(
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
 
   async issueTokens(user: User, res: Response, deviceInfo?: string): Promise<{ accessToken: string; refreshToken: string }> {
-    // Single-device enforcement: revoke all existing refresh tokens
+    // Single-device enforcement: increment session_version to invalidate prior access tokens
+    user.session_version = (user.session_version || 0) + 1;
+    await this.userRepository.save(user);
+
+    // Revoke all existing refresh tokens
     await this.revokeAllTokens(user.id);
 
     const payload: JwtPayload = {
       sub: user.id,
       role: user.role,
-      mobile: user.mobile,
+      mobile: user.mobile ?? null,
+      email: user.email ?? null,
       full_name: user.full_name ?? undefined,
+      session_version: user.session_version,
     };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -117,7 +127,7 @@ export class TokenService {
     }
 
     const newAccessToken = this.jwtService.sign(
-      { sub: payload.sub, role: payload.role, mobile: payload.mobile },
+      { sub: payload.sub, role: payload.role, mobile: payload.mobile, email: payload.email, session_version: payload.session_version },
       {
         secret: this.configService.get<string>('jwt.accessSecret'),
         expiresIn: this.configService.get<string>('jwt.accessExpiresIn') ?? '15m',

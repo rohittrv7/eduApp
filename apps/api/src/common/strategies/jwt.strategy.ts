@@ -34,6 +34,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (user.is_banned) {
       throw new UnauthorizedException('User is banned');
     }
+    if (payload.session_version !== undefined && user.session_version !== payload.session_version) {
+      throw new UnauthorizedException('Session expired: logged in on another device');
+    }
     return user;
   }
 }

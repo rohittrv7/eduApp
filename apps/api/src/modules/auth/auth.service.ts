@@ -3,6 +3,8 @@ import { Response, Request } from 'express';
 import { OtpService } from './otp.service';
 import { TokenService } from './token.service';
 import { UsersService } from '../users/users.service';
+import { RegisterEmailDto } from './dto/register-email.dto';
+import { LoginEmailDto } from './dto/login-email.dto';
 
 export interface GoogleProfile {
   googleId: string;
@@ -17,6 +19,33 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly usersService: UsersService,
   ) {}
+
+  async register(
+    dto: RegisterEmailDto,
+    res: Response,
+    deviceInfo?: string,
+  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
+    const { user } = await this.usersService.registerEmail({
+      email: dto.email,
+      password: dto.password,
+      full_name: dto.full_name,
+      role: dto.role,
+    });
+    const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
+    await this.usersService.updateStreak(user.id);
+    return { isNewUser: true, accessToken, refreshToken };
+  }
+
+  async login(
+    dto: LoginEmailDto,
+    res: Response,
+    deviceInfo?: string,
+  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
+    const user = await this.usersService.validateEmailPassword(dto.email, dto.password);
+    const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
+    await this.usersService.updateStreak(user.id);
+    return { isNewUser: !user.full_name, accessToken, refreshToken };
+  }
 
   async setUserRole(email: string, role: 'student' | 'teacher' | 'admin'): Promise<any> {
     let user = await this.usersService.findByEmail(email);

@@ -16,6 +16,8 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { VerifyFirebaseTokenDto } from './dto/verify-firebase-token.dto';
 import { RequestEmailOtpDto } from './dto/request-email-otp.dto';
 import { VerifyEmailOtpDto } from './dto/verify-email-otp.dto';
+import { RegisterEmailDto } from './dto/register-email.dto';
+import { LoginEmailDto } from './dto/login-email.dto';
 import { LinkMobileDto } from './dto/link-mobile.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -26,6 +28,30 @@ import { AuthGuard } from '@nestjs/passport';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  async register(
+    @Body() dto: RegisterEmailDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
+    const deviceInfo = req.headers['user-agent'] ?? undefined;
+    return this.authService.register(dto, res, deviceInfo);
+  }
+
+  @Public()
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  async login(
+    @Body() dto: LoginEmailDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
+    const deviceInfo = req.headers['user-agent'] ?? undefined;
+    return this.authService.login(dto, res, deviceInfo);
+  }
 
   @Public()
   @Post('bootstrap')

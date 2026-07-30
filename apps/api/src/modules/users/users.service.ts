@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { User, UserRole, LanguagePref, SkillLevel } from './entities/user.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { WatchSession } from '../videos/entities/watch-session.entity';
@@ -51,6 +52,42 @@ export class UsersService {
   async updateUser(id: string, data: Partial<User>): Promise<User> {
     await this.userRepository.update(id, data);
     return this.userRepository.findOneOrFail({ where: { id } });
+  }
+
+  async registerEmail(data: {
+    email: string;
+    password: string;
+    full_name?: string;
+    role?: UserRole;
+  }): Promise<{ user: User }> {
+    const existing = await this.findByEmail(data.email);
+    if (existing) {
+      throw new ConflictException('An account with this email already exists');
+    }
+
+    const password_hash = await bcrypt.hash(data.password, 10);
+    const user = await this.createUser({
+      email: data.email,
+      password_hash,
+      full_name: data.full_name ?? null,
+      role: data.role ?? UserRole.STUDENT,
+    });
+
+    return { user };
+  }
+
+  async validateEmailPassword(email: string, password: string): Promise<User> {
+    const user = await this.findByEmail(email);
+    if (!user || !user.password_hash) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    return user;
   }
 
   async findOrCreateByMobile(mobile: string): Promise<{ user: User; isNewUser: boolean }> {

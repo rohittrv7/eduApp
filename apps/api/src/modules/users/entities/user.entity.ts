@@ -34,11 +34,17 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 50, unique: true })
-  mobile: string;
+  @Column({ type: 'varchar', length: 50, unique: true, nullable: true })
+  mobile: string | null;
 
   @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
   email: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  password_hash: string | null;
+
+  @Column({ type: 'int', default: 1 })
+  session_version: number;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   full_name: string | null;
