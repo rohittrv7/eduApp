@@ -52,11 +52,9 @@ export function AuthInitializer() {
           router.replace('/teacher/dashboard');
         }
       })
-      .catch((err) => {
-        if (err?.response?.status === 401) {
-          clearAuthUser();
-          tokenStorage.clear();
-        }
+      .catch(() => {
+        clearAuthUser();
+        tokenStorage.clear();
       });
   }, [pathname, router, setAuthUser, clearAuthUser]);
 

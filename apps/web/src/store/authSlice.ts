@@ -30,9 +30,11 @@ export const authSlice = createSlice({
   reducers: {
     setUser(state, action: PayloadAction<UserProfile>) {
       state.user = action.payload;
+      state.isLoading = false;
     },
     clearUser(state) {
       state.user = null;
+      state.isLoading = false;
     },
     setLoading(state, action: PayloadAction<boolean>) {
       state.isLoading = action.payload;

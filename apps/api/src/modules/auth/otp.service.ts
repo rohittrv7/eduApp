@@ -10,7 +10,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import * as dns from 'dns';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
 import { RedisService } from '../../common/redis/redis.service';
@@ -46,13 +45,8 @@ export class OtpService {
     const hash = await bcrypt.hash(otp, 10);
     await this.redis.set(`otp:email:${email}`, hash, this.OTP_TTL_SECONDS);
 
-    if (this.config.get<string>('nodeEnv') !== 'production') {
-      this.logger.log(`[DEV] Email OTP for ${email}: ${otp}`);
-      // Send email asynchronously in dev mode so HTTP request responds instantly (~30ms)
-      this.sendEmailViaNodemailer(email, otp).catch(() => {});
-    } else {
-      await this.sendEmailViaNodemailer(email, otp);
-    }
+    this.logger.log(`[DEV] Email OTP for ${email}: ${otp}`);
+    await this.sendEmailViaNodemailer(email, otp);
   }
 
   /**
@@ -78,12 +72,8 @@ export class OtpService {
     const hash = await bcrypt.hash(otp, 10);
     await this.redis.set(`reset:email:${email}`, hash, this.OTP_TTL_SECONDS);
 
-    if (this.config.get<string>('nodeEnv') !== 'production') {
-      this.logger.log(`[DEV] Password Reset OTP for ${email}: ${otp}`);
-      this.sendEmailViaNodemailer(email, otp, 'Password Reset OTP').catch(() => {});
-    } else {
-      await this.sendEmailViaNodemailer(email, otp, 'Password Reset OTP');
-    }
+    this.logger.log(`[DEV] Password Reset OTP for ${email}: ${otp}`);
+    await this.sendEmailViaNodemailer(email, otp, 'Password Reset OTP');
   }
 
   /**
@@ -164,54 +154,21 @@ export class OtpService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  private async resolveIpv4Host(hostname: string): Promise<string> {
-    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
-      return hostname;
-    }
-    return new Promise((resolve) => {
-      dns.resolve4(hostname, (err, addrs) => {
-        if (!err && addrs && addrs.length > 0) {
-          resolve(addrs[0]!);
-        } else {
-          resolve(hostname);
-        }
-      });
-    });
-  }
-
   private async sendEmailViaNodemailer(email: string, otp: string, subject = 'Your Login OTP'): Promise<void> {
-    const rawHost = this.config.get<string>('email.host') || 'smtp.gmail.com';
-    const user = this.config.get<string>('email.user');
-    const pass = this.config.get<string>('email.pass');
+    if (!this.mailer) {
+      this.initMailer();
+    }
 
-    if (!user || !pass) {
-      this.logger.warn('Email credentials not configured (EMAIL_USER / EMAIL_PASS missing)');
+    if (!this.mailer) {
+      this.logger.warn('Email transporter not initialized. Check EMAIL_USER and EMAIL_PASS in environment variables.');
       return;
     }
 
-    // Default to port 465 (SSL) for Gmail on cloud hosts like Render to avoid port 587 timeouts
-    const defaultPort = rawHost.includes('gmail') ? 465 : 587;
-    const port = this.config.get<number>('email.port') || defaultPort;
-    const isSecure = port === 465;
-
-    const transporter = nodemailer.createTransport({
-      host: rawHost,
-      port,
-      secure: isSecure,
-      requireTLS: !isSecure,
-      auth: { user, pass },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-      tls: {
-        servername: rawHost,
-        rejectUnauthorized: false,
-      },
-    });
+    const user = this.config.get<string>('email.user');
+    const from = this.config.get<string>('email.from') || user;
 
     try {
-      const from = this.config.get<string>('email.from') || user;
-      await transporter.sendMail({
+      await this.mailer.sendMail({
         from: `"allEdu" <${from}>`,
         to: email,
         subject,
@@ -226,11 +183,9 @@ export class OtpService {
       });
       this.logger.log(`✅ Email OTP successfully sent to ${email}`);
     } catch (err: any) {
-      this.logger.error(`Failed to send email OTP to ${email}: ${err?.message || err}`, err?.stack);
+      this.logger.error(`❌ Failed to send email OTP to ${email}: ${err?.message || err}`, err?.stack);
       if (this.config.get<string>('nodeEnv') === 'production') {
-        throw new BadRequestException('Failed to send OTP email. Please check email credentials.');
-      } else {
-        this.logger.warn(`[DEV MODE] Email delivery failed. Use DEV OTP above: ${otp}`);
+        throw new BadRequestException(`Failed to send OTP email: ${err?.message || 'SMTP Error'}`);
       }
     }
   }
@@ -273,6 +228,38 @@ export class OtpService {
   }
 
   private initMailer(): void {
-    // Transporter created dynamically per request in sendEmailViaNodemailer with IPv4 host resolution
+    const rawHost = this.config.get<string>('email.host') || 'smtp.gmail.com';
+    const user = this.config.get<string>('email.user');
+    const pass = this.config.get<string>('email.pass');
+
+    if (!user || !pass) {
+      this.logger.warn('Email credentials missing (EMAIL_USER or EMAIL_PASS not set)');
+      return;
+    }
+
+    const configuredPort = this.config.get<number>('email.port');
+    const port = configuredPort || (rawHost.includes('gmail') ? 465 : 587);
+    const isSecure = port === 465;
+
+    this.mailer = nodemailer.createTransport({
+      host: rawHost,
+      port,
+      secure: isSecure,
+      auth: { user, pass },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    this.mailer.verify((error) => {
+      if (error) {
+        this.logger.error(`❌ SMTP Connection Verification Failed: ${error.message}`);
+      } else {
+        this.logger.log(`✅ Mailer SMTP Connection verified successfully for ${user}`);
+      }
+    });
   }
 }
