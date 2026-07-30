@@ -543,7 +543,7 @@ export default async function HomePage() {
                   download="alledu-mobile.apk"
                   className="inline-flex items-center gap-3 rounded-2xl bg-white px-7 py-4 text-base font-extrabold text-slate-900 shadow-xl hover:bg-slate-100 hover:scale-[1.02] active:scale-95 transition-all"
                 >
-                  <Download size={22} className="text-blue-600 animate-bounce" /> Download Android APK (76 MB)
+                  <Download size={22} className="text-blue-600 animate-bounce" /> Download Android APK (73 MB)
                 </a>
 
                 <Link
