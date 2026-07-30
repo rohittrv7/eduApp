@@ -186,7 +186,7 @@ export default function AdminTeachersPage() {
         </div>
 
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
-          <p className="px-4 pt-3 text-xs text-gray-400">Row pe click karo full details dekhne ke liye</p>
+          <p className="px-4 pt-3 text-xs text-gray-400">Click any row to view full details</p>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">

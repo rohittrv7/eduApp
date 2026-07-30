@@ -14,6 +14,22 @@ class AppTheme {
   static const Color accentFlame = Color(0xFFF97316); // Orange for streak
   static const Color accentTrophy = Color(0xFF8B5CF6); // Violet for rankings
 
+  // Role Theme Colors matching Web App:
+  // Student: Royal Blue (0xFF1A56DB)
+  // Teacher: Emerald Green (0xFF059669)
+  // Admin: Obsidian Slate (0xFF0F172A) & Violet (0xFF7C3AED)
+  static Color getPrimaryForRole(String? role) {
+    if (role == 'teacher') return const Color(0xFF059669);
+    if (role == 'admin') return const Color(0xFF7C3AED);
+    return const Color(0xFF1A56DB);
+  }
+
+  static Color getSecondaryForRole(String? role) {
+    if (role == 'teacher') return const Color(0xFF047857);
+    if (role == 'admin') return const Color(0xFF0F172A);
+    return const Color(0xFF4F46E5);
+  }
+
   static ThemeData get lightTheme {
     final base = ThemeData.light(useMaterial3: true);
     

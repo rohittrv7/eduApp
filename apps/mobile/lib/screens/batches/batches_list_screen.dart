@@ -172,11 +172,64 @@ class _BatchesListScreenState extends State<BatchesListScreen> with SingleTicker
                   AspectRatio(
                     aspectRatio: 16 / 9,
                     child: batch.thumbnail != null && batch.thumbnail.isNotEmpty
-                        ? Image.network(batch.thumbnail, fit: BoxFit.cover)
+                        ? Image.network(
+                            batch.thumbnail,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [AppTheme.primary, Color(0xFF1E40AF)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.school_rounded, size: 36, color: Colors.white),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        batch.name,
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
                         : Container(
-                            color: AppTheme.primary.withOpacity(0.06),
-                            child: const Center(
-                              child: Icon(Icons.book_outlined, size: 40, color: AppTheme.primary),
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [AppTheme.primary, Color(0xFF1E40AF)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.school_rounded, size: 36, color: Colors.white),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      batch.name,
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                   ),

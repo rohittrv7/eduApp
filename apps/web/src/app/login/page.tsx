@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
+import { Eye, EyeOff } from 'lucide-react';
 import apiClient, { tokenStorage } from '@/../lib/api-client';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -57,6 +58,7 @@ function LoginPageInner() {
   const { setUser } = useAuthStore();
 
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'reset'>('signin');
+  const [showPassword, setShowPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
@@ -263,12 +265,22 @@ function LoginPageInner() {
                     Forgot Password?
                   </button>
                 </div>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  {...loginForm.register('password')}
-                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    {...loginForm.register('password')}
+                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 pr-10 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
                 {loginForm.formState.errors.password && (
                   <p className="mt-1 text-xs text-red-500">{loginForm.formState.errors.password.message}</p>
                 )}
@@ -317,12 +329,22 @@ function LoginPageInner() {
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">Password</label>
-                <input
-                  type="password"
-                  placeholder="At least 6 characters"
-                  {...registerForm.register('password')}
-                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="At least 6 characters"
+                    {...registerForm.register('password')}
+                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 pr-10 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
                 {registerForm.formState.errors.password && (
                   <p className="mt-1 text-xs text-red-500">{registerForm.formState.errors.password.message}</p>
                 )}

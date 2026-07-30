@@ -21,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _nameController = TextEditingController();
 
   bool _isSignUp = false;
+  bool _obscurePassword = true;
   String? _errorMessage;
 
   @override
@@ -432,11 +433,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           // Password Input Field
                           TextFormField(
                             controller: _passwordController,
-                            obscureText: true,
-                            decoration: const InputDecoration(
+                            obscureText: _obscurePassword,
+                            decoration: InputDecoration(
                               hintText: '••••••••',
                               labelText: 'PASSWORD',
-                              prefixIcon: Icon(Icons.lock_outline, color: AppTheme.textSecondary),
+                              prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.textSecondary),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                  color: AppTheme.textSecondary,
+                                ),
+                                onPressed: () {
+                                  setState(() => _obscurePassword = !_obscurePassword);
+                                },
+                              ),
                             ),
                             validator: (val) {
                               if (val == null || val.isEmpty) {
