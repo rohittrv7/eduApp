@@ -239,6 +239,7 @@ export default function BatchDetailPage() {
   const [enrolling, setEnrolling] = useState(false);
   const [showPurchasePrompt, setShowPurchasePrompt] = useState(false);
   const [pdfViewer, setPdfViewer] = useState<{ materialId: string; title: string } | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   const { data, isLoading, refetch } = useGetBatchDetailQuery(batchId);
   const { data: liveClasses = [] } = useGetBatchLiveClassesQuery(data?.id ?? '', { skip: !data?.id });
@@ -342,14 +343,22 @@ export default function BatchDetailPage() {
       <div className="mx-auto max-w-2xl space-y-5">
         {/* Batch Info Card */}
         <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-          {data.thumbnail ? (
+          {data.thumbnail && !imageError && data.thumbnail.trim() !== '' && !data.thumbnail.includes('undefined') ? (
             <div className="w-full bg-slate-900 flex items-center justify-center p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={data.thumbnail} alt={data.name} className="max-h-80 w-full object-contain rounded-lg" />
+              <img
+                src={data.thumbnail}
+                alt={data.name}
+                className="max-h-80 w-full object-contain rounded-lg"
+                onError={() => setImageError(true)}
+              />
             </div>
           ) : (
-            <div className="flex h-32 items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
-              <BookOpen size={40} className="text-[#1a56db] opacity-40" />
+            <div className="flex h-36 items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-6">
+              <div className="flex items-center gap-3">
+                <BookOpen size={36} className="opacity-90" />
+                <span className="text-2xl font-bold tracking-tight">{data.name}</span>
+              </div>
             </div>
           )}
           <div className="p-5">

@@ -67,12 +67,58 @@ const NAV_LINKS: Record<UserRole, NavItem[]> = {
   ],
 };
 
+interface RoleTheme {
+  sidebarBg: string;
+  sidebarBorder: string;
+  logoBg: string;
+  logoText: string;
+  badgeClass: string;
+  badgeLabel: string;
+  activeLinkClass: string;
+  inactiveLinkClass: string;
+}
+
+const ROLE_THEMES: Record<UserRole, RoleTheme> = {
+  student: {
+    sidebarBg: 'bg-white',
+    sidebarBorder: 'border-slate-200',
+    logoBg: 'bg-[#1a56db]',
+    logoText: 'text-slate-900',
+    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
+    badgeLabel: 'Student',
+    activeLinkClass: 'bg-[#1a56db] text-white shadow-sm shadow-blue-500/30',
+    inactiveLinkClass: 'text-slate-600 hover:bg-blue-50 hover:text-blue-700',
+  },
+  teacher: {
+    sidebarBg: 'bg-emerald-950/95 text-slate-100 border-r border-emerald-900/50',
+    sidebarBorder: 'border-emerald-900/50',
+    logoBg: 'bg-emerald-500',
+    logoText: 'text-white',
+    badgeClass: 'bg-emerald-900/60 text-emerald-300 border-emerald-700/60',
+    badgeLabel: 'Teacher Dashboard',
+    activeLinkClass: 'bg-emerald-600 text-white font-semibold shadow-md shadow-emerald-900/50',
+    inactiveLinkClass: 'text-emerald-200/70 hover:bg-emerald-900/50 hover:text-white',
+  },
+  admin: {
+    sidebarBg: 'bg-slate-950 text-slate-100 border-r border-slate-800',
+    sidebarBorder: 'border-slate-800',
+    logoBg: 'bg-violet-600',
+    logoText: 'text-white',
+    badgeClass: 'bg-violet-950/80 text-violet-300 border-violet-700/60',
+    badgeLabel: 'Admin Console',
+    activeLinkClass: 'bg-violet-600 text-white font-semibold shadow-md shadow-violet-900/50',
+    inactiveLinkClass: 'text-slate-400 hover:bg-slate-900 hover:text-slate-100',
+  },
+};
+
 export function Sidebar() {
   const pathname = usePathname();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const { user } = useAuthStore();
 
   const role: UserRole = user?.role ?? 'student';
+  const theme = ROLE_THEMES[role] ?? ROLE_THEMES.student;
+
   const provider = process.env.NEXT_PUBLIC_VIDEO_PROVIDER ?? 'youtube';
   const allLinks = NAV_LINKS[role] ?? NAV_LINKS.student;
   const links = allLinks.filter(
@@ -91,20 +137,26 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          'fixed left-0 top-0 z-30 flex h-full w-64 flex-col bg-white shadow-lg transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none',
+          'fixed left-0 top-0 z-30 flex h-full w-64 flex-col shadow-lg transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none',
+          theme.sidebarBg,
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between border-b px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a56db] text-white font-bold text-sm">
+        <div className={cn('flex h-16 items-center justify-between border-b px-4', theme.sidebarBorder)}>
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg font-bold text-sm shadow-sm', theme.logoBg)}>
               BD
             </div>
-            <span className="font-semibold text-gray-900">allEdu</span>
+            <div className="flex flex-col">
+              <span className={cn('font-bold text-base leading-none', theme.logoText)}>allEdu</span>
+              <span className={cn('mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-extrabold uppercase border tracking-wider', theme.badgeClass)}>
+                {theme.badgeLabel}
+              </span>
+            </div>
           </Link>
           <button
-            className="lg:hidden text-gray-500 hover:text-gray-700"
+            className="lg:hidden text-gray-400 hover:text-gray-200"
             onClick={() => setSidebarOpen(false)}
           >
             <X size={20} />
@@ -122,10 +174,8 @@ export function Sidebar() {
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-[#1a56db] text-white'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200',
+                      isActive ? theme.activeLinkClass : theme.inactiveLinkClass
                     )}
                   >
                     {item.icon}

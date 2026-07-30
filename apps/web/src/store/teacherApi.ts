@@ -376,6 +376,10 @@ export const teacherApi = baseApi.injectEndpoints({
     getStudyMaterialUrl: builder.query<{ url: string; expires_at: string }, string>({
       query: (id) => `/study-materials/${id}/url`,
     }),
+    getBatchStudents: builder.query<{ id: string; full_name: string; mobile: string; email: string; profile_photo: string | null; enrolled_at: string }[], string>({
+      query: (batchId) => `/batches/${batchId}/students`,
+      providesTags: (_r, _e, batchId) => [{ type: 'Batch', id: batchId }],
+    }),
   }),
 });
 
@@ -405,6 +409,7 @@ export const {
   useUpdateTeacherBatchMutation,
   useDeleteTeacherBatchMutation,
   useGetTeacherBatchDetailQuery,
+  useGetBatchStudentsQuery,
   useGetChaptersBySubjectQuery,
   useCreateChapterMutation,
   useDeleteChapterMutation,

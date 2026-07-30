@@ -337,6 +337,23 @@ export class BatchesService {
     await this.batchRepo.remove(batch);
   }
 
+  async findEnrolledStudents(batchId: string) {
+    const enrollments = await this.enrollmentRepo.find({
+      where: { batch_id: batchId, is_active: true },
+      relations: ['student'],
+      order: { enrolled_at: 'DESC' },
+    });
+
+    return enrollments.map((e) => ({
+      id: e.student?.id,
+      full_name: e.student?.full_name ?? 'Student',
+      mobile: e.student?.mobile ?? '',
+      email: e.student?.email ?? '',
+      profile_photo: e.student?.profile_photo ?? null,
+      enrolled_at: e.enrolled_at,
+    }));
+  }
+
   async enroll(studentId: string, batchId: string): Promise<Enrollment> {
     const batch = await this.findOne(batchId);
 

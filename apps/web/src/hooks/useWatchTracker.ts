@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import apiClient from '../../lib/api-client';
 
-const FLUSH_INTERVAL_MS = 60_000;
+const FLUSH_INTERVAL_MS = 10_000;
 const QUEUE_KEY_PREFIX = 'watch:queue:';
 
 interface QueueItem {
@@ -21,9 +21,8 @@ interface UseWatchTrackerOptions {
 
 /**
  * Tracks watch time while the document is visible and the player is playing.
- * Flushes to POST /api/v1/videos/:id/watch-session every 60 s or on unmount.
+ * Flushes to POST /api/v1/videos/:id/watch-session every 10 s or on unmount.
  * Failed flushes are queued in localStorage and retried on the next flush.
- * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 19.4
  */
 export function useWatchTracker({
   videoId,
@@ -71,7 +70,9 @@ export function useWatchTracker({
       try {
         await apiClient.post(`/videos/${item.videoId}/watch-session`, {
           watchTimeSecs: item.watchTimeSecs,
+          watch_time_secs: item.watchTimeSecs,
           lastPosition: item.lastPosition,
+          last_position: item.lastPosition,
         });
       } catch {
         remaining.push(item);
@@ -92,7 +93,9 @@ export function useWatchTracker({
         await drainQueue();
         await apiClient.post(`/videos/${videoId}/watch-session`, {
           watchTimeSecs,
+          watch_time_secs: watchTimeSecs,
           lastPosition,
+          last_position: lastPosition,
         });
         lastFlushRef.current = Date.now();
       } catch {
@@ -139,7 +142,7 @@ export function useWatchTracker({
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [isPlaying, startTracking, pauseTracking]);
 
-  // Periodic flush every 60 s (Req 5.4)
+  // Periodic flush every 10 s
   useEffect(() => {
     const interval = setInterval(() => {
       if (!isTrackingRef.current) return;
@@ -150,11 +153,11 @@ export function useWatchTracker({
       accumulatedRef.current = 0;
       watchStartRef.current = now;
       flush(total);
-    }, 5_000);
+    }, 3_000);
     return () => clearInterval(interval);
   }, [flush]);
 
-  // Flush on unmount via sendBeacon for reliability (Req 5.4)
+  // Flush on unmount via sendBeacon for reliability
   useEffect(() => {
     return () => {
       let total = accumulatedRef.current;
@@ -163,7 +166,12 @@ export function useWatchTracker({
       }
       if (total <= 0) return;
       const lastPosition = getPlayerTime();
-      const payload = JSON.stringify({ watchTimeSecs: total, lastPosition });
+      const payload = JSON.stringify({
+        watchTimeSecs: total,
+        watch_time_secs: total,
+        lastPosition,
+        last_position: lastPosition,
+      });
       const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
       const url = `${base}/videos/${videoId}/watch-session`;
       if (typeof navigator !== 'undefined' && navigator.sendBeacon) {

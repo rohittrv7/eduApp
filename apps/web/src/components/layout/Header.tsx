@@ -64,6 +64,21 @@ export function Header({ unreadCount = 0 }: HeaderProps) {
       </form>
 
       <div className="ml-auto flex items-center gap-3">
+        {/* Role badge indicator */}
+        {user?.role === 'admin' ? (
+          <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1 text-xs font-extrabold text-purple-800 border border-purple-300 shadow-sm">
+            👑 Admin
+          </span>
+        ) : user?.role === 'teacher' ? (
+          <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800 border border-emerald-300 shadow-sm">
+            👨‍🏫 Teacher
+          </span>
+        ) : (
+          <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-extrabold text-blue-800 border border-blue-300 shadow-sm">
+            🎓 Student
+          </span>
+        )}
+
         {/* Notification bell */}
         <Link href="/student/notifications" className="relative text-gray-500 hover:text-gray-700">
           <Bell size={22} />

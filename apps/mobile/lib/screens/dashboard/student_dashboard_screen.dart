@@ -172,9 +172,9 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildStatCard(
-                        icon: const Icon(Icons.access_time, color: Colors.blue),
-                        value: '4h 12m', // Mapped from backend stats or default mock
-                        label: 'Watch Time',
+                        icon: const Icon(Icons.menu_book, color: Colors.blue),
+                        value: '${batchProv.enrolledBatches.length}',
+                        label: 'My Batches',
                       ),
                     ),
                   ],

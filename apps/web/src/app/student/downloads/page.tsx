@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, Play, WifiOff, HardDrive, Clock, AlertTriangle } from 'lucide-react';
+import { Trash2, Play, WifiOff, HardDrive, Clock, AlertTriangle, Download, Smartphone } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import {
   getAllOfflineVideos,
@@ -63,29 +63,36 @@ export default function DownloadsPage() {
     router.push(`/student/videos/${videoId}?offline=true`);
   };
 
-  // YouTube phase — feature not available
-  if (provider === 'youtube') {
-    return (
-      <DashboardLayout>
-        <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
-          <WifiOff className="h-12 w-12 text-gray-300" />
-          <h1 className="text-xl font-semibold text-gray-700">Offline Downloads</h1>
-          <p className="max-w-sm text-sm text-gray-500">
-            Offline video download is not available yet. This feature will be enabled in a future
-            update when we switch to our own video hosting.
-          </p>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Android Mobile App Download Card */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 p-6 text-white shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md">
+              <Smartphone className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">Download Official Android App</h2>
+              <p className="text-sm text-blue-100">
+                Get the latest release APK for live classes, offline video downloads &amp; instant notifications.
+              </p>
+            </div>
+          </div>
+          <a
+            href="/alledu-mobile.apk"
+            download="alledu-mobile.apk"
+            className="flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-blue-700 shadow-md transition-transform hover:scale-105 hover:bg-blue-50 shrink-0"
+          >
+            <Download className="h-4 w-4" />
+            Download APK (73 MB)
+          </a>
+        </div>
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Downloads</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Offline Video Downloads</h1>
             <p className="mt-1 text-sm text-gray-500">
               Videos saved for offline viewing — only accessible inside this app
             </p>

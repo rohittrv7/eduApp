@@ -84,6 +84,12 @@ export class BatchesController {
     return this.batchesService.remove(id, user.id, user.role);
   }
 
+  @Get(':id/students')
+  @Roles(UserRole.TEACHER, UserRole.ADMIN)
+  findBatchStudents(@Param('id', ParseUUIDPipe) id: string) {
+    return this.batchesService.findEnrolledStudents(id);
+  }
+
   @Post(':id/enroll')
   @Roles(UserRole.STUDENT)
   enroll(
