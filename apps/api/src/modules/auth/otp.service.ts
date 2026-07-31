@@ -246,13 +246,14 @@ export class OtpService {
       port,
       secure: isSecure,
       auth: { user, pass },
+      family: 4, // Force IPv4 family to prevent ENETUNREACH on hosts without IPv6 routing
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 15000,
       tls: {
         rejectUnauthorized: false,
       },
-    });
+    } as any);
 
     this.mailer.verify((error) => {
       if (error) {

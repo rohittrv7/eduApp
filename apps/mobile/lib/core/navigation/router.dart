@@ -5,6 +5,13 @@ import 'package:alledu_mobile/providers/auth_provider.dart';
 import 'package:alledu_mobile/screens/auth/login_screen.dart';
 import 'package:alledu_mobile/screens/auth/otp_screen.dart';
 import 'package:alledu_mobile/screens/dashboard/student_dashboard_screen.dart';
+import 'package:alledu_mobile/screens/dashboard/teacher_dashboard_screen.dart';
+import 'package:alledu_mobile/screens/dashboard/admin_dashboard_screen.dart';
+import 'package:alledu_mobile/screens/admin/admin_students_screen.dart';
+import 'package:alledu_mobile/screens/admin/admin_teachers_screen.dart';
+import 'package:alledu_mobile/screens/admin/admin_live_classes_screen.dart';
+import 'package:alledu_mobile/screens/admin/admin_revenue_screen.dart';
+import 'package:alledu_mobile/screens/admin/admin_settings_screen.dart';
 import 'package:alledu_mobile/screens/batches/batches_list_screen.dart';
 import 'package:alledu_mobile/screens/batches/batch_details_screen.dart';
 import 'package:alledu_mobile/screens/live/live_classes_list_screen.dart';
@@ -12,6 +19,7 @@ import 'package:alledu_mobile/screens/live/live_class_player_screen.dart';
 import 'package:alledu_mobile/screens/doubts/doubts_forum_screen.dart';
 import 'package:alledu_mobile/screens/doubts/ask_doubt_screen.dart';
 import 'package:alledu_mobile/screens/profile/profile_screen.dart';
+import 'package:alledu_mobile/config/theme.dart';
 
 class AppNavigation {
   static final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -49,6 +57,28 @@ class AppNavigation {
           builder: (context, state) => const OtpScreen(),
         ),
         
+        // Admin Console Dedicated Management Screens
+        GoRoute(
+          path: '/admin/students',
+          builder: (context, state) => const AdminStudentsScreen(),
+        ),
+        GoRoute(
+          path: '/admin/teachers',
+          builder: (context, state) => const AdminTeachersScreen(),
+        ),
+        GoRoute(
+          path: '/admin/live-classes',
+          builder: (context, state) => const AdminLiveClassesScreen(),
+        ),
+        GoRoute(
+          path: '/admin/revenue',
+          builder: (context, state) => const AdminRevenueScreen(),
+        ),
+        GoRoute(
+          path: '/admin/settings',
+          builder: (context, state) => const AdminSettingsScreen(),
+        ),
+        
         // Navigation bar container shell route
         ShellRoute(
           navigatorKey: shellNavigatorKey,
@@ -58,7 +88,15 @@ class AppNavigation {
           routes: [
             GoRoute(
               path: '/',
-              builder: (context, state) => const StudentDashboardScreen(),
+              builder: (context, state) {
+                final userRole = authProvider.user?.role;
+                if (userRole == 'teacher') {
+                  return const TeacherDashboardScreen();
+                } else if (userRole == 'admin') {
+                  return const AdminDashboardScreen();
+                }
+                return const StudentDashboardScreen();
+              },
             ),
             GoRoute(
               path: '/batches',
@@ -113,16 +151,20 @@ class NavigationShellScaffold extends StatelessWidget {
 
   const NavigationShellScaffold({super.key, required this.child});
 
-  int _calculateSelectedIndex(BuildContext context) {
+  int _calculateSelectedIndex(BuildContext context, bool isAdmin) {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/batches')) return 1;
     if (location.startsWith('/live')) return 2;
-    if (location.startsWith('/doubts')) return 3;
+    if (isAdmin) {
+      if (location.startsWith('/admin/students') || location.startsWith('/doubts')) return 3;
+    } else {
+      if (location.startsWith('/doubts')) return 3;
+    }
     if (location.startsWith('/profile')) return 4;
     return 0; // Default dashboard
   }
 
-  void _onItemTapped(int index, BuildContext context) {
+  void _onItemTapped(int index, BuildContext context, bool isAdmin) {
     switch (index) {
       case 0:
         context.go('/');
@@ -131,10 +173,18 @@ class NavigationShellScaffold extends StatelessWidget {
         context.go('/batches');
         break;
       case 2:
-        context.go('/live');
+        if (isAdmin) {
+          context.push('/admin/live-classes');
+        } else {
+          context.go('/live');
+        }
         break;
       case 3:
-        context.go('/doubts');
+        if (isAdmin) {
+          context.push('/admin/students');
+        } else {
+          context.go('/doubts');
+        }
         break;
       case 4:
         context.go('/profile');
@@ -144,45 +194,48 @@ class NavigationShellScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedIndex = _calculateSelectedIndex(context);
+    final auth = Provider.of<AuthProvider>(context);
+    final userRole = auth.user?.role;
+    final isAdmin = userRole == 'admin';
+    final selectedIndex = _calculateSelectedIndex(context, isAdmin);
 
     return Scaffold(
       body: child,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.grey.shade100, width: 1.5)),
+          border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1.0)),
         ),
         child: BottomNavigationBar(
           currentIndex: selectedIndex,
-          onTap: (index) => _onItemTapped(index, context),
+          onTap: (index) => _onItemTapped(index, context, isAdmin),
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF2563EB),
+          selectedItemColor: isAdmin ? const Color(0xFF7C3AED) : AppTheme.primary,
           unselectedItemColor: Colors.grey.shade400,
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
-          items: const [
-            BottomNavigationBarItem(
+          items: [
+            const BottomNavigationBarItem(
               icon: Icon(Icons.dashboard_outlined, size: 22),
               activeIcon: Icon(Icons.dashboard, size: 22),
               label: 'Home',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Icon(Icons.book_outlined, size: 22),
               activeIcon: Icon(Icons.book, size: 22),
               label: 'Batches',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.play_circle_outline, size: 22),
-              activeIcon: Icon(Icons.play_circle, size: 22),
-              label: 'Live',
+              icon: Icon(isAdmin ? Icons.videocam_outlined : Icons.play_circle_outline, size: 22),
+              activeIcon: Icon(isAdmin ? Icons.videocam : Icons.play_circle, size: 22),
+              label: isAdmin ? 'Moderation' : 'Live',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.message_outlined, size: 22),
-              activeIcon: Icon(Icons.message, size: 22),
-              label: 'Doubts',
+              icon: Icon(isAdmin ? Icons.people_outline : Icons.message_outlined, size: 22),
+              activeIcon: Icon(isAdmin ? Icons.people : Icons.message, size: 22),
+              label: isAdmin ? 'Students' : 'Doubts',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Icon(Icons.person_outline, size: 22),
               activeIcon: Icon(Icons.person, size: 22),
               label: 'Profile',

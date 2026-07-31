@@ -31,9 +31,12 @@ class BatchProvider extends ChangeNotifier {
 
     try {
       final response = await _apiClient.get('/batches');
-      final data = response.data['data'] ?? response.data;
-      if (data is List) {
-        _exploreBatches = data.map((b) => BatchSummary.fromJson(b)).toList();
+      dynamic raw = response.data;
+      if (raw is Map) {
+        raw = raw['data'] ?? raw['items'] ?? raw['batches'];
+      }
+      if (raw is List) {
+        _exploreBatches = raw.map((b) => BatchSummary.fromJson(b)).toList();
       }
     } catch (e) {
       _errorMessage = 'Failed to fetch explore batches';
@@ -51,9 +54,12 @@ class BatchProvider extends ChangeNotifier {
 
     try {
       final response = await _apiClient.get('/batches/enrolled');
-      final data = response.data['data'] ?? response.data;
-      if (data is List) {
-        _enrolledBatches = data.map((b) => BatchSummary.fromJson(b)).toList();
+      dynamic raw = response.data;
+      if (raw is Map) {
+        raw = raw['data'] ?? raw['items'] ?? raw['batches'];
+      }
+      if (raw is List) {
+        _enrolledBatches = raw.map((b) => BatchSummary.fromJson(b)).toList();
       }
     } catch (e) {
       _errorMessage = 'Failed to fetch enrolled batches';

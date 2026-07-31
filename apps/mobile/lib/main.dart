@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:alledu_mobile/providers/auth_provider.dart';
 import 'package:alledu_mobile/providers/batch_provider.dart';
 import 'package:alledu_mobile/providers/doubt_provider.dart';
+import 'package:alledu_mobile/providers/dashboard_provider.dart';
 import 'package:alledu_mobile/core/navigation/router.dart';
 import 'package:alledu_mobile/config/theme.dart';
 
@@ -21,6 +22,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BatchProvider()),
         ChangeNotifierProvider(create: (_) => DoubtProvider()),
+        ChangeNotifierProvider(create: (_) => DashboardProvider()),
       ],
       child: Builder(
         builder: (context) {

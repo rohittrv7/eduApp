@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:alledu_mobile/providers/auth_provider.dart';
 import 'package:alledu_mobile/providers/batch_provider.dart';
+import 'package:alledu_mobile/providers/dashboard_provider.dart';
 import 'package:alledu_mobile/config/theme.dart';
-import 'package:alledu_mobile/core/utils/helpers.dart';
-import 'package:intl/intl.dart';
 
 class StudentDashboardScreen extends StatefulWidget {
   const StudentDashboardScreen({super.key});
@@ -18,42 +18,58 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch dashboard data
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<BatchProvider>(context, listen: false).fetchEnrolledBatches();
-      Provider.of<AuthProvider>(context, listen: false).fetchProfile();
+      _refreshData();
     });
+  }
+
+  Future<void> _refreshData() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final batchProv = Provider.of<BatchProvider>(context, listen: false);
+    final dashProv = Provider.of<DashboardProvider>(context, listen: false);
+
+    await Future.wait([
+      auth.fetchProfile(),
+      batchProv.fetchEnrolledBatches(),
+      dashProv.fetchDashboardData(),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final batchProv = Provider.of<BatchProvider>(context);
+    final dashProv = Provider.of<DashboardProvider>(context);
     final user = auth.user;
 
-    final fullName = user?.fullName.isNotEmpty == true ? user!.fullName : 'Student';
-    final firstName = fullName.split(' ').first;
+    final displayName = user?.fullName.trim().isNotEmpty == true
+        ? user!.fullName
+        : (user?.email?.split('@').first ?? 'Student');
+    final firstName = displayName.split(' ').first;
     final streakCount = user?.streakCount ?? 0;
     final hour = DateTime.now().hour;
     final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+    final enrolledBatches = batchProv.enrolledBatches;
+    final watchSessions = dashProv.watchSessions;
+    final recentQuizzes = dashProv.recentQuizzes;
+    final leaderboardEntries = dashProv.leaderboardEntries;
+    final myRank = dashProv.myRank;
+    final quizAvgScore = dashProv.quizAvgScore;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async {
-            await Future.wait([
-              auth.fetchProfile(),
-              batchProv.fetchEnrolledBatches(),
-            ]);
-          },
+          onRefresh: _refreshData,
+          color: AppTheme.primary,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header Profile bar
+                // Top Header with Profile and Notifications
                 Row(
                   children: [
                     CircleAvatar(
@@ -62,7 +78,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                       backgroundImage: user?.photo != null ? NetworkImage(user!.photo!) : null,
                       child: user?.photo == null
                           ? Text(
-                              firstName.substring(0, 1).toUpperCase(),
+                              firstName.isNotEmpty ? firstName[0].toUpperCase() : 'S',
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                             )
                           : null,
@@ -77,167 +93,260 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                             style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
                           ),
                           Text(
-                            user?.fullName ?? 'Student',
+                            displayName,
                             style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
-                    // Notification Icon
-                    Container(
-                      height: 40,
-                      width: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.border),
-                      ),
-                      child: const Icon(Icons.notifications_none_outlined, size: 20, color: AppTheme.textSecondary),
+                    Stack(
+                      children: [
+                        Container(
+                          height: 40,
+                          width: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.border),
+                          ),
+                          child: const Icon(Icons.notifications_none_outlined, size: 20, color: AppTheme.textSecondary),
+                        ),
+                        if (dashProv.unreadNotificationsCount > 0)
+                          Positioned(
+                            right: 6,
+                            top: 6,
+                            child: Container(
+                              height: 8,
+                              width: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.redAccent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-                // Hero Greeting Card
+                // Hero Greeting Gradient Card (1:1 Web match)
                 Container(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.all(22.0),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF1D4ED8), Color(0xFF4F46E5)], // Royal blue to indigo
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF1A56DB), Color(0xFF3B82F6)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
                     ),
-                    borderRadius: BorderRadius.circular(28.0),
+                    borderRadius: BorderRadius.circular(20.0),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF4F46E5).withOpacity(0.2),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      )
+                        color: const Color(0xFF1A56DB).withOpacity(0.25),
+                        blurRadius: 15,
+                        offset: const Offset(0, 6),
+                      ),
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          '✨ Current Streak',
-                          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
                       Text(
-                        'Hey $firstName! 👋',
-                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                        '$greeting,',
+                        style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$firstName 👋',
+                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         streakCount > 0
-                            ? '🔥 Incredible! You hold a $streakCount-day learning streak. Keep moving forward!'
-                            : '🚀 Build a streak today! Start watching a lecture to build your progress blocks.',
-                        style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 13.5, height: 1.4, fontWeight: FontWeight.w500),
+                            ? "You're on a $streakCount-day streak! Keep it up."
+                            : "Start learning today to build your streak!",
+                        style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13.5),
                       ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () => context.go('/batches'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF4F46E5),
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      const SizedBox(height: 16),
+                      InkWell(
+                        onTap: () => context.go('/batches'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'My Batches',
+                            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
                         ),
-                        child: const Text('Browse Batches', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 20),
+
+                // 4 Stat Cards Row (1:1 Web match)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        icon: const Icon(Icons.whatshot, color: Color(0xFFF97316), size: 18),
+                        label: 'Streak',
+                        value: '$streakCount days',
+                        bgColor: const Color(0xFFFFF7ED),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildStatCard(
+                        icon: const Icon(Icons.book_outlined, color: Color(0xFF3B82F6), size: 18),
+                        label: 'My Batches',
+                        value: '${enrolledBatches.length}',
+                        bgColor: const Color(0xFFEFF6FF),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        icon: const Icon(Icons.star_outline, color: Color(0xFFEAB308), size: 18),
+                        label: 'Avg Score',
+                        value: quizAvgScore != null ? '${quizAvgScore.toStringAsFixed(0)}%' : '—',
+                        bgColor: const Color(0xFFFEFCE8),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildStatCard(
+                        icon: const Icon(Icons.emoji_events_outlined, color: Color(0xFFA855F7), size: 18),
+                        label: 'My Rank',
+                        value: myRank != null ? '#$myRank' : '—',
+                        bgColor: const Color(0xFFFAF5FF),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
 
-                // Stats row
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        icon: const Icon(Icons.whatshot, color: AppTheme.accentFlame),
-                        value: '$streakCount days',
-                        label: 'Streak',
-                      ),
+                // Continue Watching Section
+                if (watchSessions.isNotEmpty) ...[
+                  _buildSectionHeader(
+                    title: 'Continue Watching',
+                    icon: const Icon(Icons.play_circle_outline, size: 18, color: AppTheme.primary),
+                    onTapViewAll: () => context.go('/batches'),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 140,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: watchSessions.length,
+                      itemBuilder: (context, index) {
+                        final session = watchSessions[index];
+                        return Container(
+                          width: 220,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.border),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                                  image: session.thumbnail != null
+                                      ? DecorationImage(image: NetworkImage(session.thumbnail!), fit: BoxFit.cover)
+                                      : null,
+                                ),
+                                child: Stack(
+                                  children: [
+                                    if (session.thumbnail == null)
+                                      const Center(child: Icon(Icons.play_circle_fill, size: 32, color: AppTheme.primary)),
+                                    Positioned(
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      child: LinearProgressIndicator(
+                                        value: session.progressPercent / 100.0,
+                                        backgroundColor: Colors.grey.shade300,
+                                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                                        minHeight: 4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      session.title,
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${session.progressPercent}% watched',
+                                      style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        icon: const Icon(Icons.menu_book, color: Colors.blue),
-                        value: '${batchProv.enrolledBatches.length}',
-                        label: 'My Batches',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        icon: const Icon(Icons.star_outline, color: Colors.amber),
-                        value: '84%',
-                        label: 'Avg Quiz',
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        icon: const Icon(Icons.emoji_events_outlined, color: AppTheme.accentTrophy),
-                        value: '#12',
-                        label: 'Leaderboard',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 28),
+                  ),
+                  const SizedBox(height: 24),
+                ],
 
-                // Daily contribution blocks tracker
-                _buildStreakTracker(streakCount),
-                const SizedBox(height: 28),
-
-                // Enrolled Batches Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'My Active Batches',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textPrimary, letterSpacing: -0.2),
-                    ),
-                    TextButton(
-                      onPressed: () => context.go('/batches'),
-                      child: const Text('View All', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primary)),
-                    ),
-                  ],
+                // My Batches Section
+                _buildSectionHeader(
+                  title: 'My Batches',
+                  icon: const Icon(Icons.book_outlined, size: 18, color: AppTheme.primary),
+                  onTapViewAll: () => context.go('/batches'),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
                 if (batchProv.isLoading)
                   const Center(child: Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator()))
-                else if (batchProv.enrolledBatches.isEmpty)
+                else if (enrolledBatches.isEmpty)
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppTheme.border),
                     ),
-                    child: const Column(
+                    child: Row(
                       children: [
-                        Text('🎓', style: TextStyle(fontSize: 28)),
-                        SizedBox(height: 8),
-                        Text(
-                          'You are not enrolled in any course batches yet.',
-                          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
+                        const Icon(Icons.school_outlined, size: 32, color: AppTheme.textSecondary),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'You have not enrolled in any batches yet.',
+                            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => context.go('/batches'),
+                          child: const Text('Explore', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary)),
                         ),
                       ],
                     ),
@@ -246,25 +355,26 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: batchProv.enrolledBatches.take(2).length,
+                    itemCount: enrolledBatches.take(3).length,
                     itemBuilder: (context, index) {
-                      final batch = batchProv.enrolledBatches[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: const BorderSide(color: AppTheme.border),
+                      final batch = enrolledBatches[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.border),
                         ),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           leading: Container(
-                            height: 50,
-                            width: 50,
+                            height: 44,
+                            width: 44,
                             decoration: BoxDecoration(
-                              color: AppTheme.primary.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(12),
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.book_outlined, color: AppTheme.primary, size: 22),
+                            child: const Icon(Icons.book_outlined, color: AppTheme.primary, size: 20),
                           ),
                           title: Text(
                             batch.name,
@@ -273,8 +383,8 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Text(
-                            batch.targetExam ?? 'General prep',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            batch.targetExam ?? 'General Batch',
+                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                           ),
                           trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.textSecondary),
                           onTap: () => context.go('/batches/${batch.slug}'),
@@ -282,6 +392,257 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                       );
                     },
                   ),
+                const SizedBox(height: 24),
+
+                // Streak Calendar Section (1:1 Web match)
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.whatshot, color: Color(0xFFF97316), size: 18),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Daily Streak',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _buildStreakCalendar(streakCount),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Recent Quizzes Section (1:1 Web match)
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.track_changes, color: Color(0xFFA855F7), size: 18),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Recent Quizzes',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                              ),
+                            ],
+                          ),
+                          GestureDetector(
+                            onTap: () => context.go('/quizzes'),
+                            child: const Text('View all', style: TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (recentQuizzes.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: Text(
+                              'No quizzes attempted yet',
+                              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                            ),
+                          ),
+                        )
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: recentQuizzes.take(3).length,
+                          itemBuilder: (context, index) {
+                            final q = recentQuizzes[index];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          q.quizTitle,
+                                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          DateFormat('dd/MM/yyyy').format(q.attemptedAt),
+                                          style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Text(
+                                    '${q.score}/${q.totalMarks}',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Leaderboard Top 5 Section (1:1 Web match)
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.emoji_events, color: Color(0xFFEAB308), size: 18),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Leaderboard',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                              ),
+                              if (myRank != null) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primary,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '#$myRank',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          GestureDetector(
+                            onTap: () => context.go('/leaderboard'),
+                            child: const Text('View all', style: TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (leaderboardEntries.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: Text('No leaderboard data yet', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                          ),
+                        )
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: leaderboardEntries.take(5).length,
+                          itemBuilder: (context, index) {
+                            final entry = leaderboardEntries[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 20,
+                                    child: Text(
+                                      '${entry.rank}',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                                    ),
+                                  ),
+                                  CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: AppTheme.primary,
+                                    child: Text(
+                                      entry.fullName.isNotEmpty ? entry.fullName[0].toUpperCase() : 'S',
+                                      style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      entry.fullName,
+                                      style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${entry.score}',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Quick Links Grid (1:1 Web match)
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 2.5,
+                  children: [
+                    _buildQuickLinkCard(
+                      label: 'Test Series',
+                      icon: const Icon(Icons.bar_chart_outlined, color: Colors.blue, size: 20),
+                      onTap: () => context.go('/tests'),
+                    ),
+                    _buildQuickLinkCard(
+                      label: 'Doubts',
+                      icon: const Icon(Icons.trending_up, color: Colors.green, size: 20),
+                      onTap: () => context.go('/doubts'),
+                    ),
+                    _buildQuickLinkCard(
+                      label: 'Leaderboard',
+                      icon: const Icon(Icons.emoji_events_outlined, color: Colors.amber, size: 20),
+                      onTap: () => context.go('/leaderboard'),
+                    ),
+                    _buildQuickLinkCard(
+                      label: 'My Profile',
+                      icon: const Icon(Icons.person_outline, color: Colors.purple, size: 20),
+                      onTap: () => context.go('/profile'),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
               ],
             ),
@@ -291,12 +652,17 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     );
   }
 
-  Widget _buildStatCard({required Widget icon, required String value, required String label}) {
+  Widget _buildStatCard({
+    required Widget icon,
+    required String label,
+    required String value,
+    required Color bgColor,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(14.0),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20.0),
+        borderRadius: BorderRadius.circular(16.0),
         border: Border.all(color: AppTheme.border),
       ),
       child: Row(
@@ -304,24 +670,23 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           Container(
             padding: const EdgeInsets.all(8.0),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12),
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
             ),
             child: icon,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   value,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                 ),
-                const SizedBox(height: 2),
                 Text(
                   label,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                 ),
               ],
             ),
@@ -331,61 +696,114 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     );
   }
 
-  Widget _buildStreakTracker(int streakCount) {
+  Widget _buildSectionHeader({
+    required String title,
+    required Widget icon,
+    required VoidCallback onTapViewAll,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            icon,
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+            ),
+          ],
+        ),
+        GestureDetector(
+          onTap: onTapViewAll,
+          child: const Row(
+            children: [
+              Text('View all ', style: TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold)),
+              Icon(Icons.chevron_right, size: 14, color: AppTheme.primary),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStreakCalendar(int streakCount) {
     final now = DateTime.now();
     final days = List.generate(7, (i) => now.subtract(Duration(days: 6 - i)));
 
-    return Container(
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24.0),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.whatshot, color: AppTheme.accentFlame, size: 18),
-              const SizedBox(width: 8),
-              const Text(
-                'Weekly Progress',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+    return Column(
+      children: [
+        Row(
+          children: [
+            Text(
+              '$streakCount',
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFFF97316)),
+            ),
+            const SizedBox(width: 6),
+            const Text('day streak', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: List.generate(7, (i) {
+            final active = i >= 7 - streakCount;
+            return Expanded(
+              child: Container(
+                height: 24,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  color: active ? const Color(0xFFFB923C) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
-              const Spacer(),
-              Text(
-                '$streakCount day streak',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.accentFlame),
+            );
+          }),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: days.map((d) {
+            return Expanded(
+              child: Text(
+                DateFormat('E').format(d).substring(0, 1),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(7, (i) {
-              final active = i >= 7 - streakCount;
-              final dayName = DateFormat('E').format(days[i]).substring(0, 1);
-              return Column(
-                children: [
-                  Container(
-                    height: 28,
-                    width: 32,
-                    decoration: BoxDecoration(
-                      color: active ? AppTheme.accentFlame.withOpacity(0.85) : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    dayName,
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey.shade400),
-                  ),
-                ],
-              );
-            }),
-          ),
-        ],
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickLinkCard({
+    required String label,
+    required Widget icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Row(
+          children: [
+            icon,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 14, color: AppTheme.textSecondary),
+          ],
+        ),
       ),
     );
   }

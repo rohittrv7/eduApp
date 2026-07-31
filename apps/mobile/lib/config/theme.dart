@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Brand Colors
-  static const Color primary = Color(0xFF2563EB); // Modern blue
+  // Brand Colors matching Web App (#1a56db)
+  static const Color primary = Color(0xFF1A56DB); // Royal Blue
   static const Color primaryDark = Color(0xFF1E40AF);
-  static const Color secondary = Color(0xFF6366F1); // Indigo
-  static const Color background = Color(0xFFF8FAFC); // Slate 50
+  static const Color secondary = Color(0xFF3B82F6); // Blue 500
+  static const Color background = Color(0xFFF9FAFB); // Gray 50
   static const Color surface = Colors.white;
-  static const Color border = Color(0xFFE2E8F0); // Slate 200
-  static const Color textPrimary = Color(0xFF0F172A); // Slate 900
-  static const Color textSecondary = Color(0xFF64748B); // Slate 500
+  static const Color border = Color(0xFFE5E7EB); // Gray 200
+  static const Color textPrimary = Color(0xFF111827); // Gray 900
+  static const Color textSecondary = Color(0xFF6B7280); // Gray 500
   static const Color accentFlame = Color(0xFFF97316); // Orange for streak
-  static const Color accentTrophy = Color(0xFF8B5CF6); // Violet for rankings
+  static const Color accentTrophy = Color(0xFFEAB308); // Yellow for leaderboard
+  static const Color accentPurple = Color(0xFFA855F7); // Purple for rank
 
   // Role Theme Colors matching Web App:
   // Student: Royal Blue (0xFF1A56DB)

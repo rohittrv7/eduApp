@@ -21,17 +21,22 @@ class BatchSummary {
     this.language,
   });
 
-  factory BatchSummary.fromJson(Map<String, dynamic> json) {
+  factory BatchSummary.fromJson(Map<String, dynamic> rawJson) {
+    final json = (rawJson['batch'] is Map<String, dynamic>)
+        ? rawJson['batch'] as Map<String, dynamic>
+        : rawJson;
+    final priceVal = (json['price'] ?? 0);
+    final numPrice = (priceVal is num) ? priceVal.toDouble() : 0.0;
     return BatchSummary(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
-      thumbnail: json['thumbnail'],
-      price: (json['price'] ?? 0).toDouble(),
-      isFree: json['is_free'] ?? json['isFree'] ?? false,
-      description: json['description'],
-      targetExam: json['target_exam'] ?? json['targetExam'],
-      language: json['language'],
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? json['title']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? json['id']?.toString() ?? '',
+      thumbnail: json['thumbnail']?.toString() ?? json['thumbnail_url']?.toString(),
+      price: numPrice,
+      isFree: json['is_free'] ?? json['isFree'] ?? (numPrice == 0),
+      description: json['description']?.toString(),
+      targetExam: json['target_exam']?.toString() ?? json['targetExam']?.toString(),
+      language: json['language']?.toString(),
     );
   }
 }

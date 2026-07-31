@@ -16,13 +16,12 @@ export const tokenStorage = {
   setRefresh: (t: string) => {
     if (typeof window === 'undefined') return;
     localStorage.setItem(REFRESH_KEY, t);
-    document.cookie = `refresh_token=${t}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
   },
   clear: () => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
-    // Clear cookies with explicit past expiration and path/SameSite variations
+    // Clear cookies with explicit past expiration
     document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
     document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
     document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=None; Secure';

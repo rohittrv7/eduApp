@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { useGetTeacherBatchesQuery, useCreateTeacherBatchMutation } from '@/store/teacherApi';
+import { useGetTeacherBatchesQuery, useCreateTeacherBatchMutation, useUpdateTeacherBatchMutation } from '@/store/teacherApi';
 
 export default function TeacherBatchesPage() {
   const router = useRouter();
@@ -14,14 +14,16 @@ export default function TeacherBatchesPage() {
   });
   const [msg, setMsg] = useState('');
 
+  const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
   const { data: batches = [], isLoading } = useGetTeacherBatchesQuery();
   const [createBatch, { isLoading: creating }] = useCreateTeacherBatchMutation();
+  const [updateBatch, { isLoading: updating }] = useUpdateTeacherBatchMutation();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMsg('');
     try {
-      await createBatch({
+      const payload = {
         name: form.name,
         description: form.description || undefined,
         target_exam: form.target_exam || undefined,
@@ -31,12 +33,21 @@ export default function TeacherBatchesPage() {
         thumbnail: form.thumbnail || undefined,
         start_date: form.start_date || undefined,
         end_date: form.end_date || undefined,
-      }).unwrap();
-      setMsg('Batch created!');
+      };
+
+      if (editingBatchId) {
+        await updateBatch({ id: editingBatchId, body: payload }).unwrap();
+        setMsg('Batch updated successfully!');
+      } else {
+        await createBatch(payload).unwrap();
+        setMsg('Batch created!');
+      }
+
       setShowForm(false);
+      setEditingBatchId(null);
       setForm({ name: '', description: '', target_exam: '', price: '0', is_free: true, language: 'hindi', thumbnail: '', start_date: '', end_date: '' });
     } catch (err: any) {
-      setMsg(err?.data?.message ?? 'Failed to create batch');
+      setMsg(err?.data?.message ?? (editingBatchId ? 'Failed to update batch' : 'Failed to create batch'));
     }
   }
 
@@ -47,18 +58,27 @@ export default function TeacherBatchesPage() {
       <div className="space-y-5">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">My Batches</h1>
-          <button onClick={() => setShowForm((v) => !v)}
+          <button onClick={() => {
+            if (showForm) {
+              setShowForm(false);
+              setEditingBatchId(null);
+            } else {
+              setEditingBatchId(null);
+              setForm({ name: '', description: '', target_exam: '', price: '0', is_free: true, language: 'hindi', thumbnail: '', start_date: '', end_date: '' });
+              setShowForm(true);
+            }
+          }}
             className="rounded-lg bg-[#1a56db] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
             {showForm ? 'Cancel' : '+ New Batch'}
           </button>
         </div>
 
-        {msg && <p className={`text-sm ${msg.includes('created') ? 'text-green-600' : 'text-red-500'}`}>{msg}</p>}
+        {msg && <p className={`text-sm ${msg.includes('created') || msg.includes('updated') ? 'text-green-600' : 'text-red-500'}`}>{msg}</p>}
 
-        {/* Create Form */}
+        {/* Create / Edit Form */}
         {showForm && (
           <form onSubmit={handleSubmit} className="rounded-xl border bg-white p-6 shadow-sm space-y-4">
-            <h2 className="font-semibold text-gray-800">Create New Batch</h2>
+            <h2 className="font-semibold text-gray-800">{editingBatchId ? 'Edit Batch' : 'Create New Batch'}</h2>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -128,9 +148,9 @@ export default function TeacherBatchesPage() {
               </div>
             </div>
 
-            <button type="submit" disabled={creating}
+            <button type="submit" disabled={creating || updating}
               className="rounded-lg bg-[#1a56db] px-6 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
-              {creating ? 'Creating...' : 'Create Batch'}
+              {creating || updating ? (editingBatchId ? 'Updating...' : 'Creating...') : (editingBatchId ? 'Update Batch' : 'Create Batch')}
             </button>
           </form>
         )}
@@ -179,6 +199,7 @@ export default function TeacherBatchesPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        setEditingBatchId(batch.id);
                         setForm({
                           name: batch.name,
                           description: (batch as any).description ?? '',

@@ -238,6 +238,7 @@ function LoginPageInner() {
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">Email Address</label>
                 <input
                   type="email"
+                  autoComplete="email"
                   placeholder="name@domain.com"
                   {...loginForm.register('email')}
                   className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
@@ -268,6 +269,7 @@ function LoginPageInner() {
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
                     placeholder="••••••••"
                     {...loginForm.register('password')}
                     className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 pr-10 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
@@ -305,6 +307,7 @@ function LoginPageInner() {
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">Full Name</label>
                 <input
                   type="text"
+                  autoComplete="name"
                   placeholder="Rahul Kumar"
                   {...registerForm.register('fullName')}
                   className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
@@ -318,6 +321,7 @@ function LoginPageInner() {
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">Email Address</label>
                 <input
                   type="email"
+                  autoComplete="email"
                   placeholder="name@domain.com"
                   {...registerForm.register('email')}
                   className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
@@ -332,6 +336,7 @@ function LoginPageInner() {
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     placeholder="At least 6 characters"
                     {...registerForm.register('password')}
                     className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 pr-10 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"

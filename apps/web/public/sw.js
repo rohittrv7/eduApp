@@ -53,10 +53,10 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET and chrome-extension requests
-  if (request.method !== 'GET' || url.protocol === 'chrome-extension:') return;
+  // Skip external backend requests (allow direct browser fetch & cold starts)
+  if (url.origin !== self.location.origin) return;
 
-  // API requests: Network first, fallback to Cache (Instagram style offline data)
+  // API requests: Network first, fallback to Cache
   if (API_PATHS.some((p) => url.pathname.startsWith(p))) {
     event.respondWith(networkFirstWithStaleFallback(request));
     return;
