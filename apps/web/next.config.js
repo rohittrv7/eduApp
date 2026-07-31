@@ -88,6 +88,18 @@ const nextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      { source: '/apk', destination: '/alledu-mobile.apk' },
+      { source: '/download-apk', destination: '/alledu-mobile.apk' },
+      { source: '/download/apk', destination: '/alledu-mobile.apk' },
+      { source: '/app-release.apk', destination: '/alledu-mobile.apk' },
+      { source: '/alledu.apk', destination: '/alledu-mobile.apk' },
+      { source: '/downloads/alledu.apk', destination: '/alledu-mobile.apk' },
+      { source: '/downloads/alledu-mobile.apk', destination: '/alledu-mobile.apk' },
+      { source: '/downloads/app-release.apk', destination: '/alledu-mobile.apk' },
+    ];
+  },
 };
 
 module.exports = nextConfig;

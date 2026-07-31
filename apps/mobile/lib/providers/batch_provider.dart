@@ -117,6 +117,29 @@ class BatchProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // Delete Batch
+  Future<bool> deleteBatch(String batchId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _apiClient.delete('/batches/$batchId');
+      await fetchExploreBatches();
+      await fetchEnrolledBatches();
+      return true;
+    } catch (e) {
+      if (e.toString().contains('students are already enrolled')) {
+        _errorMessage = 'Cannot delete batch: Students are enrolled.';
+      } else {
+        _errorMessage = 'Failed to delete batch.';
+      }
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Enroll Free
   Future<bool> enrollInFreeBatch(String batchId) async {
     _isLoading = true;
@@ -124,7 +147,7 @@ class BatchProvider extends ChangeNotifier {
     try {
       await _apiClient.post('/batches/$batchId/enroll');
       if (_activeBatch != null && _activeBatch!.id == batchId) {
-        await fetchBatchDetail(_activeBatch!.slug);
+        await fetchBatchDetail(_activeBatch!.identifier);
       }
       await fetchEnrolledBatches();
       return true;
@@ -149,7 +172,7 @@ class BatchProvider extends ChangeNotifier {
         // 2. Simply trigger enrollment success on backend
         await _apiClient.post('/batches/$batchId/enroll'); 
         if (_activeBatch != null && _activeBatch!.id == batchId) {
-          await fetchBatchDetail(_activeBatch!.slug);
+          await fetchBatchDetail(_activeBatch!.identifier);
         }
         await fetchEnrolledBatches();
         return true;

@@ -233,12 +233,13 @@ function LoginPageInner() {
 
           {mode === 'signin' && (
             /* Sign In Form */
-            <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+            <form id="login-form" method="POST" action="#" onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">Email Address</label>
+                <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-gray-700">Email Address</label>
                 <input
+                  id="login-email"
                   type="email"
-                  autoComplete="email"
+                  autoComplete="username email"
                   placeholder="name@domain.com"
                   {...loginForm.register('email')}
                   className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
@@ -250,7 +251,7 @@ function LoginPageInner() {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-sm font-medium text-gray-700">Password</label>
+                  <label htmlFor="login-password" className="block text-sm font-medium text-gray-700">Password</label>
                   <button
                     type="button"
                     onClick={() => {
@@ -268,6 +269,7 @@ function LoginPageInner() {
                 </div>
                 <div className="relative">
                   <input
+                    id="login-password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     placeholder="••••••••"
@@ -302,10 +304,11 @@ function LoginPageInner() {
 
           {mode === 'signup' && (
             /* Create Account Form */
-            <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+            <form id="signup-form" method="POST" action="#" onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">Full Name</label>
+                <label htmlFor="signup-fullname" className="mb-1.5 block text-sm font-medium text-gray-700">Full Name</label>
                 <input
+                  id="signup-fullname"
                   type="text"
                   autoComplete="name"
                   placeholder="Rahul Kumar"
@@ -318,10 +321,11 @@ function LoginPageInner() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">Email Address</label>
+                <label htmlFor="signup-email" className="mb-1.5 block text-sm font-medium text-gray-700">Email Address</label>
                 <input
+                  id="signup-email"
                   type="email"
-                  autoComplete="email"
+                  autoComplete="username email"
                   placeholder="name@domain.com"
                   {...registerForm.register('email')}
                   className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
@@ -332,9 +336,10 @@ function LoginPageInner() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">Password</label>
+                <label htmlFor="signup-password" className="mb-1.5 block text-sm font-medium text-gray-700">Password</label>
                 <div className="relative">
                   <input
+                    id="signup-password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="new-password"
                     placeholder="At least 6 characters"

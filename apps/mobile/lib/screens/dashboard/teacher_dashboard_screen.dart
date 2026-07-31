@@ -126,7 +126,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                     label: 'Manage Quizzes',
                     color: Colors.green.shade50,
                     iconColor: Colors.green.shade600,
-                    onTap: () => context.go('/doubts'),
+                    onTap: () => context.go('/quizzes'),
                   ),
                   _buildQuickActionButton(
                     icon: Icons.people,

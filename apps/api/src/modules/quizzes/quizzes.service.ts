@@ -32,6 +32,22 @@ export class QuizzesService {
     private readonly videoRepo: Repository<RecordedVideo>,
   ) {}
 
+  async findAll(): Promise<any[]> {
+    const quizzes = await this.quizRepo.find({
+      order: { created_at: 'DESC' },
+    });
+
+    const result = [];
+    for (const q of quizzes) {
+      const questionCount = await this.questionRepo.count({ where: { quiz_id: q.id } });
+      result.push({
+        ...q,
+        questionCount,
+      });
+    }
+    return result;
+  }
+
   async create(teacherId: string, dto: CreateQuizDto): Promise<Quiz> {
     if (dto.questions) {
       for (const q of dto.questions) {

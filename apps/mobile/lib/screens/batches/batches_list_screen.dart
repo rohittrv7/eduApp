@@ -37,12 +37,52 @@ class _BatchesListScreenState extends State<BatchesListScreen> with SingleTicker
     super.dispose();
   }
 
+  void _confirmDeleteBatch(BuildContext context, dynamic batch) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Batch', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Are you sure you want to delete "${batch.name}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final bp = Provider.of<BatchProvider>(context, listen: false);
+              final messenger = ScaffoldMessenger.of(context);
+              final success = await bp.deleteBatch(batch.id);
+              if (success) {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Batch deleted successfully!'), backgroundColor: Colors.green),
+                );
+              } else {
+                messenger.showSnackBar(
+                  SnackBar(content: Text(bp.errorMessage ?? 'Failed to delete batch'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showBatchDialog({dynamic batchToEdit}) {
     final isEditing = batchToEdit != null;
     final nameCtrl = TextEditingController(text: isEditing ? (batchToEdit.name ?? '') : '');
     final descCtrl = TextEditingController(text: isEditing ? (batchToEdit.description ?? '') : '');
     final examCtrl = TextEditingController(text: isEditing ? (batchToEdit.targetExam ?? '') : '');
+    final thumbCtrl = TextEditingController(text: isEditing ? (batchToEdit.thumbnail ?? '') : '');
     final priceCtrl = TextEditingController(text: isEditing ? (batchToEdit.price?.toString() ?? '0') : '');
+    final capCtrl = TextEditingController(text: isEditing ? (batchToEdit.capacity?.toString() ?? '') : '');
+    final trialCtrl = TextEditingController(text: isEditing ? (batchToEdit.trialDays?.toString() ?? '') : '');
+    String selectedLanguage = isEditing ? (batchToEdit.language ?? 'Hinglish') : 'Hinglish';
     bool isFree = isEditing ? (batchToEdit.isFree ?? true) : true;
     bool isSubmitting = false;
 
@@ -68,10 +108,26 @@ class _BatchesListScreenState extends State<BatchesListScreen> with SingleTicker
                       decoration: const InputDecoration(labelText: 'Target Exam', hintText: 'JEE / NEET / Foundation'),
                     ),
                     const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: ['Hinglish', 'Hindi', 'English'].contains(selectedLanguage) ? selectedLanguage : 'Hinglish',
+                      decoration: const InputDecoration(labelText: 'Language'),
+                      items: const [
+                        DropdownMenuItem(value: 'Hinglish', child: Text('Hinglish')),
+                        DropdownMenuItem(value: 'Hindi', child: Text('Hindi')),
+                        DropdownMenuItem(value: 'English', child: Text('English')),
+                      ],
+                      onChanged: (val) => setDialogState(() => selectedLanguage = val ?? 'Hinglish'),
+                    ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: descCtrl,
                       maxLines: 2,
                       decoration: const InputDecoration(labelText: 'Description', hintText: 'Batch description...'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: thumbCtrl,
+                      decoration: const InputDecoration(labelText: 'Thumbnail URL', hintText: 'https://example.com/banner.jpg'),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -91,6 +147,26 @@ class _BatchesListScreenState extends State<BatchesListScreen> with SingleTicker
                         decoration: const InputDecoration(labelText: 'Price (₹)', hintText: '999'),
                       ),
                     ],
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: capCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Capacity (Optional)', hintText: '100'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: trialCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Trial Days', hintText: '7'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -108,14 +184,22 @@ class _BatchesListScreenState extends State<BatchesListScreen> with SingleTicker
                           setDialogState(() => isSubmitting = true);
                           try {
                             final apiClient = ApiClient();
-                            final payload = {
+                            final payload = <String, dynamic>{
                               'name': name,
                               'target_exam': examCtrl.text.trim(),
                               'description': descCtrl.text.trim(),
+                              'thumbnail': thumbCtrl.text.trim().isNotEmpty ? thumbCtrl.text.trim() : null,
+                              'language': selectedLanguage,
                               'is_free': isFree,
                               'price': isFree ? 0 : (double.tryParse(priceCtrl.text.trim()) ?? 0),
-                              'language': 'Hinglish',
                             };
+                            if (capCtrl.text.trim().isNotEmpty) {
+                              payload['capacity'] = int.tryParse(capCtrl.text.trim());
+                            }
+                            if (trialCtrl.text.trim().isNotEmpty) {
+                              payload['trial_days'] = int.tryParse(trialCtrl.text.trim());
+                            }
+
                             if (isEditing) {
                               await apiClient.patch('/batches/${batchToEdit.id}', data: payload);
                             } else {
@@ -125,9 +209,16 @@ class _BatchesListScreenState extends State<BatchesListScreen> with SingleTicker
                               navigator.pop();
                               bp.fetchExploreBatches();
                               bp.fetchEnrolledBatches();
-                              messenger.showSnackBar(SnackBar(content: Text(isEditing ? 'Batch updated successfully!' : 'Batch created successfully!')));
+                              messenger.showSnackBar(SnackBar(
+                                content: Text(isEditing ? 'Batch updated successfully!' : 'Batch created successfully!'),
+                                backgroundColor: Colors.green,
+                              ));
                             }
-                          } catch (_) {
+                          } catch (e) {
+                            messenger.showSnackBar(SnackBar(
+                              content: Text('Failed to ${isEditing ? "update" : "create"} batch.'),
+                              backgroundColor: Colors.red,
+                            ));
                           } finally {
                             setDialogState(() => isSubmitting = false);
                           }
@@ -265,13 +356,14 @@ class _BatchesListScreenState extends State<BatchesListScreen> with SingleTicker
       );
     }
 
+    final batchProv = Provider.of<BatchProvider>(context, listen: false);
+
     return RefreshIndicator(
       onRefresh: () async {
-        final bp = Provider.of<BatchProvider>(context, listen: false);
         if (isExplore) {
-          await bp.fetchExploreBatches();
+          await batchProv.fetchExploreBatches();
         } else {
-          await bp.fetchEnrolledBatches();
+          await batchProv.fetchEnrolledBatches();
         }
       },
       child: ListView.builder(
@@ -283,6 +375,8 @@ class _BatchesListScreenState extends State<BatchesListScreen> with SingleTicker
               ? 'Free'
               : UIHelpers.formatINR(batch.price);
 
+          final isEnrolled = batchProv.enrolledBatches.any((eb) => eb.id == batch.id);
+
           return Card(
             margin: const EdgeInsets.only(bottom: 16),
             shape: RoundedRectangleBorder(
@@ -292,7 +386,7 @@ class _BatchesListScreenState extends State<BatchesListScreen> with SingleTicker
             clipBehavior: Clip.antiAlias,
             elevation: 0,
             child: InkWell(
-              onTap: () => context.go('/batches/${batch.slug}'),
+              onTap: () => context.push('/batches/${batch.identifier}'),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -410,32 +504,67 @@ class _BatchesListScreenState extends State<BatchesListScreen> with SingleTicker
                             Row(
                               children: [
                                 if (isManagement) ...[
-                                  OutlinedButton(
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined, size: 20, color: AppTheme.primary),
+                                    tooltip: 'Edit Batch',
                                     onPressed: () => _showBatchDialog(batchToEdit: batch),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    child: const Text('Edit', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                                   ),
-                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                                    tooltip: 'Delete Batch',
+                                    onPressed: () => _confirmDeleteBatch(context, batch),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  ElevatedButton(
+                                    onPressed: () => context.push('/batches/${batch.identifier}'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primary,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
+                                    child: const Text('Manage', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                                  ),
+                                ] else ...[
+                                  if (!isEnrolled)
+                                    ElevatedButton.icon(
+                                      onPressed: () async {
+                                        bool success = false;
+                                        if (batch.isFree || batch.price == 0) {
+                                          success = await batchProv.enrollInFreeBatch(batch.id);
+                                        } else {
+                                          success = await batchProv.simulatePurchase(batch.id);
+                                        }
+                                        if (success && mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(batch.isFree ? 'Successfully Enrolled!' : 'Payment Completed successfully!'),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.primary,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      ),
+                                      icon: const Icon(Icons.add_task_rounded, size: 16, color: Colors.white),
+                                      label: Text(
+                                        batch.isFree || batch.price == 0 ? 'Enroll Now' : 'Buy Now',
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                      ),
+                                    )
+                                  else
+                                    OutlinedButton.icon(
+                                      onPressed: () => context.push('/batches/${batch.identifier}'),
+                                      style: OutlinedButton.styleFrom(
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      ),
+                                      icon: const Icon(Icons.check_circle_outline, size: 16, color: Colors.green),
+                                      label: const Text('Enrolled', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green)),
+                                    ),
                                 ],
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primary,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    isManagement ? 'Manage Batch' : 'View Details',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
                               ],
                             ),
                           ],

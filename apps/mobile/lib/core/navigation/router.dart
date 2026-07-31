@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:alledu_mobile/providers/auth_provider.dart';
@@ -18,6 +19,9 @@ import 'package:alledu_mobile/screens/live/live_classes_list_screen.dart';
 import 'package:alledu_mobile/screens/live/live_class_player_screen.dart';
 import 'package:alledu_mobile/screens/doubts/doubts_forum_screen.dart';
 import 'package:alledu_mobile/screens/doubts/ask_doubt_screen.dart';
+import 'package:alledu_mobile/screens/quizzes/quizzes_list_screen.dart';
+import 'package:alledu_mobile/screens/quizzes/quiz_take_screen.dart';
+import 'package:alledu_mobile/screens/quizzes/create_quiz_screen.dart';
 import 'package:alledu_mobile/screens/profile/profile_screen.dart';
 import 'package:alledu_mobile/config/theme.dart';
 
@@ -79,6 +83,19 @@ class AppNavigation {
           builder: (context, state) => const AdminSettingsScreen(),
         ),
         
+        // Quizzes & Tests routes
+        GoRoute(
+          path: '/quizzes/create',
+          builder: (context, state) => const CreateQuizScreen(),
+        ),
+        GoRoute(
+          path: '/quizzes/:quizId',
+          builder: (context, state) {
+            final quizId = state.pathParameters['quizId'] ?? '';
+            return QuizTakeScreen(quizId: quizId);
+          },
+        ),
+
         // Navigation bar container shell route
         ShellRoute(
           navigatorKey: shellNavigatorKey,
@@ -133,6 +150,10 @@ class AppNavigation {
                   builder: (context, state) => const AskDoubtScreen(),
                 ),
               ],
+            ),
+            GoRoute(
+              path: '/quizzes',
+              builder: (context, state) => const QuizzesListScreen(),
             ),
             GoRoute(
               path: '/profile',
@@ -199,48 +220,64 @@ class NavigationShellScaffold extends StatelessWidget {
     final isAdmin = userRole == 'admin';
     final selectedIndex = _calculateSelectedIndex(context, isAdmin);
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1.0)),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: selectedIndex,
-          onTap: (index) => _onItemTapped(index, context, isAdmin),
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: isAdmin ? const Color(0xFF7C3AED) : AppTheme.primary,
-          unselectedItemColor: Colors.grey.shade400,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined, size: 22),
-              activeIcon: Icon(Icons.dashboard, size: 22),
-              label: 'Home',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.book_outlined, size: 22),
-              activeIcon: Icon(Icons.book, size: 22),
-              label: 'Batches',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(isAdmin ? Icons.videocam_outlined : Icons.play_circle_outline, size: 22),
-              activeIcon: Icon(isAdmin ? Icons.videocam : Icons.play_circle, size: 22),
-              label: isAdmin ? 'Moderation' : 'Live',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(isAdmin ? Icons.people_outline : Icons.message_outlined, size: 22),
-              activeIcon: Icon(isAdmin ? Icons.people : Icons.message, size: 22),
-              label: isAdmin ? 'Students' : 'Doubts',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline, size: 22),
-              activeIcon: Icon(Icons.person, size: 22),
-              label: 'Profile',
-            ),
-          ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          final selectedIndex = _calculateSelectedIndex(context, isAdmin);
+          if (selectedIndex != 0) {
+            context.go('/');
+          } else {
+            SystemNavigator.pop();
+          }
+        }
+      },
+      child: Scaffold(
+        body: child,
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1.0)),
+          ),
+          child: BottomNavigationBar(
+            currentIndex: selectedIndex,
+            onTap: (index) => _onItemTapped(index, context, isAdmin),
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.white,
+            selectedItemColor: isAdmin ? const Color(0xFF7C3AED) : AppTheme.primary,
+            unselectedItemColor: Colors.grey.shade400,
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.dashboard_outlined, size: 22),
+                activeIcon: Icon(Icons.dashboard, size: 22),
+                label: 'Home',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.book_outlined, size: 22),
+                activeIcon: Icon(Icons.book, size: 22),
+                label: 'Batches',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(isAdmin ? Icons.videocam_outlined : Icons.play_circle_outline, size: 22),
+                activeIcon: Icon(isAdmin ? Icons.videocam : Icons.play_circle, size: 22),
+                label: isAdmin ? 'Moderation' : 'Live',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(isAdmin ? Icons.people_outline : Icons.message_outlined, size: 22),
+                activeIcon: Icon(isAdmin ? Icons.people : Icons.message, size: 22),
+                label: isAdmin ? 'Students' : 'Doubts',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline, size: 22),
+                activeIcon: Icon(Icons.person, size: 22),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );

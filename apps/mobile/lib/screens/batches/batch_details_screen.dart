@@ -7,6 +7,9 @@ import 'package:alledu_mobile/core/utils/helpers.dart';
 import 'package:alledu_mobile/models/batch.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 
+import 'package:alledu_mobile/providers/auth_provider.dart';
+import 'package:alledu_mobile/core/api/api_client.dart';
+
 class BatchDetailsScreen extends StatefulWidget {
   final String batchId;
 
@@ -54,10 +57,212 @@ class _BatchDetailsScreenState extends State<BatchDetailsScreen> with SingleTick
     }
   }
 
+  void _confirmDeleteBatch(BuildContext context, BatchDetail batch) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Batch', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Are you sure you want to delete "${batch.name}"? This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final bp = Provider.of<BatchProvider>(context, listen: false);
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+              final success = await bp.deleteBatch(batch.id);
+              if (success) {
+                if (mounted) {
+                  if (navigator.canPop()) {
+                    navigator.pop();
+                  } else {
+                    context.go('/batches');
+                  }
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Batch deleted successfully!'), backgroundColor: Colors.green),
+                  );
+                }
+              } else {
+                messenger.showSnackBar(
+                  SnackBar(content: Text(bp.errorMessage ?? 'Failed to delete batch'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditBatchDialog(BuildContext context, BatchDetail batch) {
+    final nameCtrl = TextEditingController(text: batch.name);
+    final descCtrl = TextEditingController(text: batch.description ?? '');
+    final examCtrl = TextEditingController(text: batch.targetExam ?? '');
+    final thumbCtrl = TextEditingController(text: batch.thumbnail ?? '');
+    final priceCtrl = TextEditingController(text: batch.price.toString());
+    final capCtrl = TextEditingController(text: batch.capacity?.toString() ?? '');
+    final trialCtrl = TextEditingController(text: batch.trialDays?.toString() ?? '');
+    String selectedLanguage = batch.language ?? 'Hinglish';
+    bool isFree = batch.isFree;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text('Edit Batch', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(labelText: 'Batch Name *'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: examCtrl,
+                      decoration: const InputDecoration(labelText: 'Target Exam'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: ['Hinglish', 'Hindi', 'English'].contains(selectedLanguage) ? selectedLanguage : 'Hinglish',
+                      decoration: const InputDecoration(labelText: 'Language'),
+                      items: const [
+                        DropdownMenuItem(value: 'Hinglish', child: Text('Hinglish')),
+                        DropdownMenuItem(value: 'Hindi', child: Text('Hindi')),
+                        DropdownMenuItem(value: 'English', child: Text('English')),
+                      ],
+                      onChanged: (val) => setDialogState(() => selectedLanguage = val ?? 'Hinglish'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 2,
+                      decoration: const InputDecoration(labelText: 'Description'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: thumbCtrl,
+                      decoration: const InputDecoration(labelText: 'Thumbnail URL'),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: isFree,
+                          onChanged: (val) => setDialogState(() => isFree = val ?? true),
+                        ),
+                        const Text('Free Batch', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      ],
+                    ),
+                    if (!isFree) ...[
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: priceCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Price (₹)'),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: capCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Capacity (Optional)'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: trialCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Trial Days'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final name = nameCtrl.text.trim();
+                          if (name.isEmpty) return;
+                          final bp = Provider.of<BatchProvider>(context, listen: false);
+                          final messenger = ScaffoldMessenger.of(context);
+                          final navigator = Navigator.of(context);
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final apiClient = ApiClient();
+                            final payload = <String, dynamic>{
+                              'name': name,
+                              'target_exam': examCtrl.text.trim(),
+                              'description': descCtrl.text.trim(),
+                              'thumbnail': thumbCtrl.text.trim().isNotEmpty ? thumbCtrl.text.trim() : null,
+                              'language': selectedLanguage,
+                              'is_free': isFree,
+                              'price': isFree ? 0 : (double.tryParse(priceCtrl.text.trim()) ?? 0),
+                            };
+                            if (capCtrl.text.trim().isNotEmpty) {
+                              payload['capacity'] = int.tryParse(capCtrl.text.trim());
+                            }
+                            if (trialCtrl.text.trim().isNotEmpty) {
+                              payload['trial_days'] = int.tryParse(trialCtrl.text.trim());
+                            }
+
+                            await apiClient.patch('/batches/${batch.id}', data: payload);
+                            if (mounted) {
+                              navigator.pop();
+                              await bp.fetchBatchDetail(batch.id);
+                              await bp.fetchExploreBatches();
+                              await bp.fetchEnrolledBatches();
+                              messenger.showSnackBar(const SnackBar(
+                                content: Text('Batch updated successfully!'),
+                                backgroundColor: Colors.green,
+                              ));
+                            }
+                          } catch (e) {
+                            messenger.showSnackBar(const SnackBar(
+                              content: Text('Failed to update batch.'),
+                              backgroundColor: Colors.red,
+                            ));
+                          } finally {
+                            setDialogState(() => isSubmitting = false);
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Update Batch'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
     final batchProv = Provider.of<BatchProvider>(context);
     final batch = batchProv.activeBatch;
+    final userRole = auth.user?.role;
+    final isManagement = userRole == 'admin' || userRole == 'teacher';
 
     if (batchProv.isLoading && batch == null) {
       return const Scaffold(
@@ -68,8 +273,46 @@ class _BatchDetailsScreenState extends State<BatchDetailsScreen> with SingleTick
 
     if (batch == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Error')),
-        body: const Center(child: Text('Failed to load batch details.')),
+        appBar: AppBar(
+          title: const Text('Batch Details'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/batches');
+              }
+            },
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 56, color: Colors.redAccent),
+                const SizedBox(height: 16),
+                Text(
+                  batchProv.errorMessage ?? 'Failed to load batch details.',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () => batchProv.fetchBatchDetail(widget.batchId),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry Loading'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -83,6 +326,30 @@ class _BatchDetailsScreenState extends State<BatchDetailsScreen> with SingleTick
               pinned: true,
               backgroundColor: AppTheme.primary,
               iconTheme: const IconThemeData(color: Colors.white),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/batches');
+                  }
+                },
+              ),
+              actions: [
+                if (isManagement) ...[
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, color: Colors.white),
+                    tooltip: 'Edit Batch',
+                    onPressed: () => _showEditBatchDialog(context, batch),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.white),
+                    tooltip: 'Delete Batch',
+                    onPressed: () => _confirmDeleteBatch(context, batch),
+                  ),
+                ],
+              ],
               flexibleSpace: FlexibleSpaceBar(
                 background: batch.thumbnail != null && batch.thumbnail!.isNotEmpty
                     ? Image.network(batch.thumbnail!, fit: BoxFit.cover)

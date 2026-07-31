@@ -21,6 +21,11 @@ import { SubmitAttemptDto } from './dto/submit-attempt.dto';
 export class QuizzesController {
   constructor(private readonly quizzesService: QuizzesService) {}
 
+  @Get()
+  findAll() {
+    return this.quizzesService.findAll();
+  }
+
   @Post()
   @Roles(UserRole.TEACHER, UserRole.ADMIN)
   create(@CurrentUser() user: any, @Body() dto: CreateQuizDto) {

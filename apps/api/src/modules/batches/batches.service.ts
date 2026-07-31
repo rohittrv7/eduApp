@@ -89,7 +89,7 @@ export class BatchesService {
     if (uuidRegex.test(slug)) {
       batch = await this.batchRepo.findOne({ where: { id: slug } });
     } else {
-      batch = await this.batchRepo.findOne({ where: { slug } });
+      batch = await this.batchRepo.findOne({ where: [{ slug }, { id: slug }] });
     }
     if (!batch) {
       throw new NotFoundException(`Batch "${slug}" not found`);

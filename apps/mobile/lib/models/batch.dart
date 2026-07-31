@@ -8,6 +8,10 @@ class BatchSummary {
   final String? description;
   final String? targetExam;
   final String? language;
+  final int? capacity;
+  final int? trialDays;
+  final String? startDate;
+  final String? endDate;
 
   BatchSummary({
     required this.id,
@@ -19,14 +23,22 @@ class BatchSummary {
     this.description,
     this.targetExam,
     this.language,
+    this.capacity,
+    this.trialDays,
+    this.startDate,
+    this.endDate,
   });
+
+  String get identifier => (slug.isNotEmpty ? slug : id);
 
   factory BatchSummary.fromJson(Map<String, dynamic> rawJson) {
     final json = (rawJson['batch'] is Map<String, dynamic>)
         ? rawJson['batch'] as Map<String, dynamic>
         : rawJson;
-    final priceVal = (json['price'] ?? 0);
-    final numPrice = (priceVal is num) ? priceVal.toDouble() : 0.0;
+    final priceVal = json['price'];
+    final numPrice = (priceVal is num)
+        ? priceVal.toDouble()
+        : (double.tryParse(priceVal?.toString() ?? '') ?? 0.0);
     return BatchSummary(
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? json['title']?.toString() ?? '',
@@ -37,6 +49,10 @@ class BatchSummary {
       description: json['description']?.toString(),
       targetExam: json['target_exam']?.toString() ?? json['targetExam']?.toString(),
       language: json['language']?.toString(),
+      capacity: (json['capacity'] is num) ? (json['capacity'] as num).toInt() : int.tryParse(json['capacity']?.toString() ?? ''),
+      trialDays: (json['trial_days'] is num) ? (json['trial_days'] as num).toInt() : (json['trialDays'] is num ? (json['trialDays'] as num).toInt() : null),
+      startDate: json['start_date']?.toString() ?? json['startDate']?.toString(),
+      endDate: json['end_date']?.toString() ?? json['endDate']?.toString(),
     );
   }
 }
@@ -51,6 +67,10 @@ class BatchDetail {
   final String? description;
   final String? targetExam;
   final String? language;
+  final int? capacity;
+  final int? trialDays;
+  final String? startDate;
+  final String? endDate;
   final bool isEnrolled;
   final List<Subject> subjects;
   final int progressPercent;
@@ -65,26 +85,46 @@ class BatchDetail {
     this.description,
     this.targetExam,
     this.language,
+    this.capacity,
+    this.trialDays,
+    this.startDate,
+    this.endDate,
     required this.isEnrolled,
     required this.subjects,
     required this.progressPercent,
   });
 
-  factory BatchDetail.fromJson(Map<String, dynamic> json) {
+  String get identifier => (slug.isNotEmpty ? slug : id);
+
+  factory BatchDetail.fromJson(Map<String, dynamic> rawJson) {
+    final json = (rawJson['batch'] is Map<String, dynamic>)
+        ? rawJson['batch'] as Map<String, dynamic>
+        : rawJson;
     var subs = json['subjects'] as List? ?? [];
+    final priceVal = json['price'];
+    final numPrice = (priceVal is num)
+        ? priceVal.toDouble()
+        : (double.tryParse(priceVal?.toString() ?? '') ?? 0.0);
+    final progVal = json['progressPercent'] ?? json['progress_percent'];
+    final numProg = (progVal is num) ? progVal.toInt() : (int.tryParse(progVal?.toString() ?? '') ?? 0);
+
     return BatchDetail(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
-      thumbnail: json['thumbnail'],
-      price: (json['price'] ?? 0).toDouble(),
-      isFree: json['is_free'] ?? json['isFree'] ?? false,
-      description: json['description'],
-      targetExam: json['target_exam'] ?? json['targetExam'],
-      language: json['language'],
-      isEnrolled: json['isEnrolled'] ?? false,
-      subjects: subs.map((s) => Subject.fromJson(s)).toList(),
-      progressPercent: json['progressPercent'] ?? 0,
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? json['title']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? json['id']?.toString() ?? '',
+      thumbnail: json['thumbnail']?.toString() ?? json['thumbnail_url']?.toString(),
+      price: numPrice,
+      isFree: json['is_free'] ?? json['isFree'] ?? (numPrice == 0),
+      description: json['description']?.toString(),
+      targetExam: json['target_exam']?.toString() ?? json['targetExam']?.toString(),
+      language: json['language']?.toString(),
+      capacity: (json['capacity'] is num) ? (json['capacity'] as num).toInt() : int.tryParse(json['capacity']?.toString() ?? ''),
+      trialDays: (json['trial_days'] is num) ? (json['trial_days'] as num).toInt() : (json['trialDays'] is num ? (json['trialDays'] as num).toInt() : null),
+      startDate: json['start_date']?.toString() ?? json['startDate']?.toString(),
+      endDate: json['end_date']?.toString() ?? json['endDate']?.toString(),
+      isEnrolled: json['isEnrolled'] ?? json['is_enrolled'] ?? false,
+      subjects: subs.map((s) => Subject.fromJson(s as Map<String, dynamic>)).toList(),
+      progressPercent: numProg,
     );
   }
 }
@@ -105,10 +145,10 @@ class Subject {
   factory Subject.fromJson(Map<String, dynamic> json) {
     var chaps = json['chapters'] as List? ?? [];
     return Subject(
-      id: json['id'] ?? '',
-      title: json['title'] ?? json['name'] ?? '',
-      name: json['name'],
-      chapters: chaps.map((c) => Chapter.fromJson(c)).toList(),
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? json['name']?.toString() ?? '',
+      name: json['name']?.toString(),
+      chapters: chaps.map((c) => Chapter.fromJson(c as Map<String, dynamic>)).toList(),
     );
   }
 }
@@ -130,12 +170,15 @@ class Chapter {
 
   factory Chapter.fromJson(Map<String, dynamic> json) {
     var vids = json['videos'] as List? ?? [];
+    final orderVal = json['order'] ?? json['order_index'];
+    final numOrder = (orderVal is num) ? orderVal.toInt() : (int.tryParse(orderVal?.toString() ?? '') ?? 0);
+
     return Chapter(
-      id: json['id'] ?? '',
-      title: json['title'] ?? json['name'] ?? '',
-      name: json['name'],
-      order: json['order'] ?? 0,
-      videos: vids.map((v) => VideoItem.fromJson(v)).toList(),
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? json['name']?.toString() ?? '',
+      name: json['name']?.toString(),
+      order: numOrder,
+      videos: vids.map((v) => VideoItem.fromJson(v as Map<String, dynamic>)).toList(),
     );
   }
 }
@@ -160,13 +203,18 @@ class VideoItem {
   });
 
   factory VideoItem.fromJson(Map<String, dynamic> json) {
+    final durVal = json['durationSeconds'] ?? json['duration_seconds'];
+    final numDur = (durVal is num) ? durVal.toInt() : (int.tryParse(durVal?.toString() ?? '') ?? 0);
+    final progVal = json['progressPercent'] ?? json['progress_percent'];
+    final numProg = (progVal is num) ? progVal.toInt() : (int.tryParse(progVal?.toString() ?? '') ?? 0);
+
     return VideoItem(
-      id: json['id'] ?? '',
-      title: json['title'] ?? '',
-      thumbnail: json['thumbnail'],
-      durationSeconds: json['durationSeconds'] ?? 0,
-      progressPercent: json['progressPercent'] ?? 0,
-      isLocked: json['isLocked'] ?? false,
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      thumbnail: json['thumbnail']?.toString(),
+      durationSeconds: numDur,
+      progressPercent: numProg,
+      isLocked: json['isLocked'] ?? json['is_locked'] ?? false,
       isLiveRecording: json['isLiveRecording'] ?? json['isLiveRec'] ?? false,
     );
   }
