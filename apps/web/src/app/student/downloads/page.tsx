@@ -85,7 +85,7 @@ export default function DownloadsPage() {
             className="flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-blue-700 shadow-md transition-transform hover:scale-105 hover:bg-blue-50 shrink-0"
           >
             <Download className="h-4 w-4" />
-            Download APK (73 MB)
+            Download APK (75 MB)
           </a>
         </div>
 

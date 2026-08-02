@@ -34,7 +34,7 @@ class _LiveClassPlayerScreenState extends State<LiveClassPlayerScreen> {
 
   // ---- Player state --------------------------------------------------------
   bool _isPlaying = false;
-  bool _isMuted = true; // starts muted (autoplay requirement)
+  bool _isMuted = true;
   double _currentTime = 0;
   double _duration = 0;
   double _playbackSpeed = 1.0;
@@ -45,6 +45,8 @@ class _LiveClassPlayerScreenState extends State<LiveClassPlayerScreen> {
   bool _isFullscreen = false;
   Timer? _hideControlsTimer;
   Timer? _timePoller;
+  Timer? _countdownTimer;
+  Duration _remaining = Duration.zero;
 
   // ---- Chat state ----------------------------------------------------------
   final _chatController = TextEditingController();
@@ -54,6 +56,10 @@ class _LiveClassPlayerScreenState extends State<LiveClassPlayerScreen> {
     'Got it! Thank you sir!',
     'Is the PDF uploaded for this chapter?',
   ];
+
+  // ---- Notes state (for recorded classes) ----------------------------------
+  final _notesController = TextEditingController();
+  final List<String> _savedNotes = [];
 
   // ---- Playback speed options ----------------------------------------------
   static const List<double> _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
@@ -71,13 +77,15 @@ class _LiveClassPlayerScreenState extends State<LiveClassPlayerScreen> {
   void dispose() {
     _hideControlsTimer?.cancel();
     _timePoller?.cancel();
+    _countdownTimer?.cancel();
     _chatController.dispose();
+    _notesController.dispose();
     if (_isFullscreen) _exitFullscreen();
     super.dispose();
   }
 
   // ---------------------------------------------------------------------------
-  // API
+  // API — improved with data-wrapper handling
   // ---------------------------------------------------------------------------
   Future<void> _fetchLiveClass() async {
     setState(() {
@@ -86,18 +94,56 @@ class _LiveClassPlayerScreenState extends State<LiveClassPlayerScreen> {
     });
     try {
       final res = await _apiClient.get('/live-classes/${widget.classId}');
-      final data = res.data is Map ? (res.data['data'] ?? res.data) : res.data;
-      final liveClass = LiveClass.fromJson(data as Map<String, dynamic>);
+      final raw = res.data;
+      Map<String, dynamic> data;
+      if (raw is Map && raw.containsKey('data')) {
+        data = raw['data'] as Map<String, dynamic>;
+      } else if (raw is Map) {
+        data = Map<String, dynamic>.from(raw);
+      } else {
+        throw Exception('Invalid response format');
+      }
+      final liveClass = LiveClass.fromJson(data);
       setState(() {
         _liveClass = liveClass;
         _isLoading = false;
       });
+      _startCountdownIfNeeded(liveClass);
     } catch (e) {
       setState(() {
         _error = 'Failed to load live class. Please try again.';
         _isLoading = false;
       });
     }
+  }
+
+  void _startCountdownIfNeeded(LiveClass liveClass) {
+    if (liveClass.status == 'approved' || liveClass.status == 'scheduled') {
+      _updateRemaining(liveClass);
+      _countdownTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => _updateRemaining(liveClass),
+      );
+    }
+  }
+
+  void _updateRemaining(LiveClass liveClass) {
+    try {
+      final scheduledAt = DateTime.parse(liveClass.scheduledAt).toLocal();
+      final diff = scheduledAt.difference(DateTime.now());
+      if (mounted) {
+        setState(() => _remaining = diff.isNegative ? Duration.zero : diff);
+      }
+    } catch (_) {}
+  }
+
+  String _formatCountdown(Duration d) {
+    final days = d.inDays;
+    final h = d.inHours.remainder(24).toString().padLeft(2, '0');
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (days > 0) return '${days}d ${h}h ${m}m ${s}s';
+    return '$h:$m:$s';
   }
 
   // ---------------------------------------------------------------------------
@@ -111,9 +157,7 @@ class _LiveClassPlayerScreenState extends State<LiveClassPlayerScreen> {
     });
   }
 
-  void _cancelAutoHide() {
-    _hideControlsTimer?.cancel();
-  }
+  void _cancelAutoHide() => _hideControlsTimer?.cancel();
 
   // ---------------------------------------------------------------------------
   // JavaScript bridge helpers
@@ -149,26 +193,20 @@ class _LiveClassPlayerScreenState extends State<LiveClassPlayerScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Console message parser — receives YT_* prefixed logs from HTML
+  // Console message parser
   // ---------------------------------------------------------------------------
   void _handleConsoleMessage(String message) {
     if (message == 'YT_READY') {
       setState(() => _isReady = true);
       _jsListen();
       _startTimePoller();
-      // Auto-play on ready
       Future.delayed(const Duration(milliseconds: 500), _jsPlay);
       return;
     }
     if (message.startsWith('YT_STATE:')) {
-      final stateStr = message.substring('YT_STATE:'.length).trim();
-      final state = int.tryParse(stateStr);
-      // YT states: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
-      if (state == 1) {
-        setState(() => _isPlaying = true);
-      } else if (state == 2 || state == 0) {
-        setState(() => _isPlaying = false);
-      }
+      final state = int.tryParse(message.substring('YT_STATE:'.length).trim());
+      if (state == 1) setState(() => _isPlaying = true);
+      else if (state == 2 || state == 0) setState(() => _isPlaying = false);
       return;
     }
     if (message.startsWith('YT_TIME:')) {
@@ -182,22 +220,17 @@ class _LiveClassPlayerScreenState extends State<LiveClassPlayerScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Periodic time polling (every 500ms)
-  // ---------------------------------------------------------------------------
   void _startTimePoller() {
     _timePoller?.cancel();
     _timePoller = Timer.periodic(const Duration(milliseconds: 500), (_) async {
       if (!mounted || _webCtrl == null) return;
-      await _webCtrl!.evaluateJavascript(
-        source: '''
-          (function() {
-            var p = document.getElementById("player");
-            if (!p || !p.contentWindow) return;
-            p.contentWindow.postMessage(JSON.stringify({event:"listening"}), "*");
-          })();
-        ''',
-      );
+      await _webCtrl!.evaluateJavascript(source: '''
+        (function() {
+          var p = document.getElementById("player");
+          if (!p || !p.contentWindow) return;
+          p.contentWindow.postMessage(JSON.stringify({event:"listening"}), "*");
+        })();
+      ''');
     });
   }
 
@@ -220,84 +253,105 @@ class _LiveClassPlayerScreenState extends State<LiveClassPlayerScreen> {
   }
 
   void _toggleFullscreen() {
-    if (_isFullscreen) {
-      _exitFullscreen();
-    } else {
-      _enterFullscreen();
-    }
+    _isFullscreen ? _exitFullscreen() : _enterFullscreen();
     _showControlsTemporarily();
   }
 
   // ---------------------------------------------------------------------------
-  // Build HTML for the white-label player
+  // HTML builders
   // ---------------------------------------------------------------------------
-  String _buildHtml(String videoId) {
+  String _buildLiveHtml(String videoId) {
     return '''<!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { background: #000; overflow: hidden; width: 100vw; height: 100vh; touch-action: none; }
-.wrapper { position: relative; width: 100%; height: 100%; overflow: hidden; }
-iframe {
-  position: absolute;
-  top: -60px;
-  left: 0;
-  width: 100%;
-  height: calc(100% + 120px);
-  border: none;
-  pointer-events: none;
-}
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { background:#000; overflow:hidden; width:100vw; height:100vh; touch-action:none; }
+.wrapper { position:relative; width:100%; height:100%; overflow:hidden; }
+iframe { position:absolute; top:-60px; left:0; width:100%; height:calc(100% + 120px); border:none; pointer-events:none; }
 </style>
 </head>
 <body>
 <div class="wrapper">
 <iframe id="player"
   src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&playsinline=1&showinfo=0&origin=https://alledu.app"
-  allow="autoplay; encrypted-media"
-  allowfullscreen>
+  allow="autoplay; encrypted-media" allowfullscreen>
 </iframe>
 </div>
 <script>
-window.addEventListener('message', function(e) {
-  if (typeof e.data !== 'string') return;
-  try {
-    var d = JSON.parse(e.data);
-    if (d.event === 'onReady') {
-      console.log('YT_READY');
-      document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'listening'}), '*');
+window.addEventListener('message',function(e){
+  if(typeof e.data!=='string')return;
+  try{
+    var d=JSON.parse(e.data);
+    if(d.event==='onReady'){console.log('YT_READY');document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'listening'}),'*');}
+    if(d.event==='onStateChange'){console.log('YT_STATE:'+d.info);}
+    if(d.event==='infoDelivery'&&d.info){
+      if(d.info.currentTime!==undefined)console.log('YT_TIME:'+d.info.currentTime);
+      if(d.info.duration!==undefined)console.log('YT_DUR:'+d.info.duration);
     }
-    if (d.event === 'onStateChange') {
-      console.log('YT_STATE:' + d.info);
-    }
-    if (d.event === 'infoDelivery' && d.info) {
-      if (d.info.currentTime !== undefined) console.log('YT_TIME:' + d.info.currentTime);
-      if (d.info.duration !== undefined) console.log('YT_DUR:' + d.info.duration);
-    }
-  } catch(err) {}
+  }catch(err){}
 });
+function ytPlay(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'playVideo',args:[]}),'*');}
+function ytPause(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}),'*');}
+function ytSeek(t){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'seekTo',args:[t,true]}),'*');}
+function ytUnmute(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'unMute',args:[]}),'*');document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'setVolume',args:[100]}),'*');}
+function ytSpeed(s){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'setPlaybackRate',args:[s]}),'*');}
+function ytListen(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'listening'}),'*');}
+</script>
+</body>
+</html>''';
+  }
 
-function ytPlay()   { document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'playVideo',args:[]}), '*'); }
-function ytPause()  { document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); }
-function ytSeek(t)  { document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'seekTo',args:[t,true]}), '*'); }
-function ytUnmute() {
-  document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'unMute',args:[]}), '*');
-  document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'setVolume',args:[100]}), '*');
-}
-function ytSpeed(s) { document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'setPlaybackRate',args:[s]}), '*'); }
-function ytListen() { document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'listening'}), '*'); }
+  String _buildRecordingHtml(String videoId) {
+    // Recording: no autoplay, mute=0, standard controls hidden but JS-controlled
+    return '''<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { background:#000; overflow:hidden; width:100vw; height:100vh; touch-action:none; }
+.wrapper { position:relative; width:100%; height:100%; overflow:hidden; }
+iframe { position:absolute; top:-60px; left:0; width:100%; height:calc(100% + 120px); border:none; pointer-events:none; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+<iframe id="player"
+  src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=0&mute=0&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&playsinline=1&showinfo=0&origin=https://alledu.app"
+  allow="autoplay; encrypted-media" allowfullscreen>
+</iframe>
+</div>
+<script>
+window.addEventListener('message',function(e){
+  if(typeof e.data!=='string')return;
+  try{
+    var d=JSON.parse(e.data);
+    if(d.event==='onReady'){console.log('YT_READY');document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'listening'}),'*');}
+    if(d.event==='onStateChange'){console.log('YT_STATE:'+d.info);}
+    if(d.event==='infoDelivery'&&d.info){
+      if(d.info.currentTime!==undefined)console.log('YT_TIME:'+d.info.currentTime);
+      if(d.info.duration!==undefined)console.log('YT_DUR:'+d.info.duration);
+    }
+  }catch(err){}
+});
+function ytPlay(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'playVideo',args:[]}),'*');}
+function ytPause(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}),'*');}
+function ytSeek(t){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'seekTo',args:[t,true]}),'*');}
+function ytUnmute(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'unMute',args:[]}),'*');document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'setVolume',args:[100]}),'*');}
+function ytSpeed(s){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'setPlaybackRate',args:[s]}),'*');}
+function ytListen(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'listening'}),'*');}
 </script>
 </body>
 </html>''';
   }
 
   // ---------------------------------------------------------------------------
-  // Build
+  // Build — routes to live / recording / upcoming views
   // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    // Loading state
     if (_isLoading) {
       return Scaffold(
         backgroundColor: Colors.black,
@@ -313,17 +367,12 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
               ),
               title: const Text('Loading...', style: TextStyle(fontSize: 16)),
             ),
-            const Expanded(
-              child: Center(
-                child: CircularProgressIndicator(color: AppTheme.primary),
-              ),
-            ),
+            const Expanded(child: Center(child: CircularProgressIndicator(color: AppTheme.primary))),
           ],
         ),
       );
     }
 
-    // Error state
     if (_error != null) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -359,17 +408,150 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
     }
 
     final liveClass = _liveClass!;
+
+    // Route to appropriate view based on status
+    if (liveClass.status == 'approved' || liveClass.status == 'scheduled') {
+      return _buildUpcomingView(liveClass);
+    } else if (liveClass.status == 'ended') {
+      return _buildRecordingView(liveClass);
+    } else {
+      // status == 'active' or fallback
+      return _buildLiveView(liveClass);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // UPCOMING / WAITING VIEW
+  // ---------------------------------------------------------------------------
+  Widget _buildUpcomingView(LiveClass liveClass) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F172A),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0F172A),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, size: 20),
+          onPressed: () => context.pop(),
+        ),
+        title: Text(
+          liveClass.title,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.green,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text('UPCOMING', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('📡', style: TextStyle(fontSize: 64)),
+              const SizedBox(height: 24),
+              const Text(
+                'Class starts in',
+                style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.12)),
+                ),
+                child: Text(
+                  _remaining > Duration.zero ? _formatCountdown(_remaining) : 'Starting soon...',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w900,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.calendar_today_outlined, color: Colors.white54, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${_formatDate(liveClass.scheduledAt)} at ${_formatTime(liveClass.scheduledAt)}',
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                ],
+              ),
+              if (liveClass.description != null && liveClass.description!.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text(
+                  liveClass.description!,
+                  style: const TextStyle(color: Colors.white38, fontSize: 13, height: 1.5),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: 32),
+              OutlinedButton.icon(
+                onPressed: _fetchLiveClass,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white24),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Refresh Status'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(String iso) {
+    try {
+      final d = DateTime.parse(iso).toLocal();
+      final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return '${d.day} ${months[d.month - 1]} ${d.year}';
+    } catch (_) { return ''; }
+  }
+
+  String _formatTime(String iso) {
+    try {
+      final d = DateTime.parse(iso).toLocal();
+      final h = d.hour > 12 ? d.hour - 12 : (d.hour == 0 ? 12 : d.hour);
+      final m = d.minute.toString().padLeft(2, '0');
+      final ampm = d.hour >= 12 ? 'PM' : 'AM';
+      return '$h:$m $ampm';
+    } catch (_) { return ''; }
+  }
+
+  // ---------------------------------------------------------------------------
+  // LIVE VIEW (status == 'active')
+  // ---------------------------------------------------------------------------
+  Widget _buildLiveView(LiveClass liveClass) {
     final videoId = liveClass.youtubeVideoId ?? '';
 
     if (_isFullscreen) {
-      return WillPopScope(
-        onWillPop: () async {
-          _exitFullscreen();
-          return false;
-        },
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) { if (!didPop) _exitFullscreen(); },
         child: Scaffold(
           backgroundColor: Colors.black,
-          body: _buildPlayerStack(videoId, liveClass),
+          body: _buildPlayerStack(videoId, isLive: true),
         ),
       );
     }
@@ -392,13 +574,10 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Player (16:9 aspect ratio) ──────────────────────────────────
           AspectRatio(
             aspectRatio: 16 / 9,
-            child: _buildPlayerStack(videoId, liveClass),
+            child: _buildPlayerStack(videoId, isLive: true),
           ),
-
-          // ── Live class info ─────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Column(
@@ -408,10 +587,7 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
+                      decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(6)),
                       child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1)),
                     ),
                     const SizedBox(width: 8),
@@ -422,23 +598,103 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    Row(
+                      children: [
+                        const Icon(Icons.remove_red_eye_outlined, size: 14, color: AppTheme.textSecondary),
+                        const SizedBox(width: 4),
+                        Text('—', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                      ],
+                    ),
                   ],
                 ),
                 if (liveClass.description != null && liveClass.description!.isNotEmpty) ...[
                   const SizedBox(height: 6),
-                  Text(
-                    liveClass.description!,
-                    style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary, height: 1.4),
-                  ),
+                  Text(liveClass.description!, style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary, height: 1.4)),
                 ],
               ],
             ),
           ),
-
           const Divider(height: 1),
-
-          // ── Chat section ────────────────────────────────────────────────
           Expanded(child: _buildChatSection()),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // RECORDING VIEW (status == 'ended')
+  // ---------------------------------------------------------------------------
+  Widget _buildRecordingView(LiveClass liveClass) {
+    final videoId = liveClass.youtubeVideoId ?? '';
+
+    if (_isFullscreen) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) { if (!didPop) _exitFullscreen(); },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: _buildPlayerStack(videoId, isLive: false),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: AppTheme.textPrimary, size: 20),
+          onPressed: () => context.pop(),
+        ),
+        title: Text(
+          liveClass.title,
+          style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(6)),
+            child: const Text('RECORDING', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: _buildPlayerStack(videoId, isLive: false),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(6)),
+                      child: const Text('RECORDING', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(liveClass.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary), overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
+                if (liveClass.description != null && liveClass.description!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(liveClass.description!, style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary, height: 1.4)),
+                ],
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(child: _buildNotesSection()),
         ],
       ),
     );
@@ -447,7 +703,7 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
   // ---------------------------------------------------------------------------
   // Player stack: WebView + overlay controls
   // ---------------------------------------------------------------------------
-  Widget _buildPlayerStack(String videoId, LiveClass liveClass) {
+  Widget _buildPlayerStack(String videoId, {required bool isLive}) {
     if (videoId.isEmpty) {
       return Container(
         color: Colors.black,
@@ -469,10 +725,9 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
       onTap: _showControlsTemporarily,
       child: Stack(
         children: [
-          // ── InAppWebView ──────────────────────────────────────────────
           InAppWebView(
             initialData: InAppWebViewInitialData(
-              data: _buildHtml(videoId),
+              data: isLive ? _buildLiveHtml(videoId) : _buildRecordingHtml(videoId),
               mimeType: 'text/html',
               encoding: 'utf-8',
               baseUrl: WebUri('https://alledu.app'),
@@ -487,15 +742,10 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
               javaScriptEnabled: true,
               mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
             ),
-            onWebViewCreated: (ctrl) {
-              _webCtrl = ctrl;
-            },
-            onConsoleMessage: (ctrl, msg) {
-              _handleConsoleMessage(msg.message);
-            },
+            onWebViewCreated: (ctrl) => _webCtrl = ctrl,
+            onConsoleMessage: (ctrl, msg) => _handleConsoleMessage(msg.message),
           ),
-
-          // ── Watermark overlay ────────────────────────────────────────
+          // Watermark
           Positioned(
             top: 10,
             right: 12,
@@ -515,14 +765,37 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
               ),
             ),
           ),
-
-          // ── Loading indicator (before player is ready) ───────────────
+          // Loading indicator
           if (!_isReady)
-            const Center(
-              child: CircularProgressIndicator(color: Colors.white),
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
+          // Mute banner (live only)
+          if (isLive && _isMuted && _isReady)
+            Positioned(
+              bottom: 56,
+              left: 0,
+              right: 0,
+              child: GestureDetector(
+                onTap: _jsUnmute,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.volume_off, color: Colors.white, size: 16),
+                        SizedBox(width: 6),
+                        Text('Tap to unmute', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-
-          // ── Custom controls overlay ──────────────────────────────────
+          // Custom controls overlay
           AnimatedOpacity(
             opacity: _showControls ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 300),
@@ -545,19 +818,13 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xAA000000),
-            Color(0x00000000),
-            Color(0x00000000),
-            Color(0xBB000000),
-          ],
+          colors: [Color(0xAA000000), Color(0x00000000), Color(0x00000000), Color(0xBB000000)],
           stops: [0.0, 0.25, 0.75, 1.0],
         ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          // ── Seek bar ────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: SliderTheme(
@@ -576,39 +843,20 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
                 max: _duration > 0 ? _duration : 1,
                 onChangeStart: (_) => _cancelAutoHide(),
                 onChanged: (v) => setState(() => _currentTime = v),
-                onChangeEnd: (v) {
-                  _jsSeek(v);
-                  _showControlsTemporarily();
-                },
+                onChangeEnd: (v) { _jsSeek(v); _showControlsTemporarily(); },
               ),
             ),
           ),
-
-          // ── Bottom row ───────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
             child: Row(
               children: [
-                // Play / Pause
                 IconButton(
-                  icon: Icon(
-                    _isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  onPressed: () {
-                    _isPlaying ? _jsPause() : _jsPlay();
-                    _showControlsTemporarily();
-                  },
+                  icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 28),
+                  onPressed: () { _isPlaying ? _jsPause() : _jsPlay(); _showControlsTemporarily(); },
                 ),
-
-                // Mute/Unmute
                 IconButton(
-                  icon: Icon(
-                    _isMuted ? Icons.volume_off : Icons.volume_up,
-                    color: Colors.white,
-                    size: 22,
-                  ),
+                  icon: Icon(_isMuted ? Icons.volume_off : Icons.volume_up, color: Colors.white, size: 22),
                   onPressed: () async {
                     if (_isMuted) {
                       await _jsUnmute();
@@ -621,43 +869,25 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
                     _showControlsTemporarily();
                   },
                 ),
-
-                // Time display
                 Text(
-                  '${_formatTime(_currentTime)} / ${_formatTime(_duration)}',
+                  '${_formatPlayerTime(_currentTime)} / ${_formatPlayerTime(_duration)}',
                   style: const TextStyle(color: Colors.white, fontSize: 11),
                 ),
-
                 const Spacer(),
-
-                // Speed selector
                 GestureDetector(
-                  onTap: () {
-                    _cancelAutoHide();
-                    _showSpeedDialog();
-                  },
+                  onTap: () { _cancelAutoHide(); _showSpeedDialog(); },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white54),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+                    decoration: BoxDecoration(border: Border.all(color: Colors.white54), borderRadius: BorderRadius.circular(4)),
                     child: Text(
                       '${_playbackSpeed == _playbackSpeed.truncateToDouble() ? _playbackSpeed.toInt() : _playbackSpeed}x',
                       style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
-
                 const SizedBox(width: 4),
-
-                // Fullscreen
                 IconButton(
-                  icon: Icon(
-                    _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  icon: Icon(_isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen, color: Colors.white, size: 24),
                   onPressed: _toggleFullscreen,
                 ),
               ],
@@ -675,9 +905,7 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1C1C1E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (_) {
         return SafeArea(
           child: Padding(
@@ -687,10 +915,7 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
               children: [
                 const Padding(
                   padding: EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    'Playback Speed',
-                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
+                  child: Text('Playback Speed', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
                 ),
                 ..._speeds.map((s) {
                   final selected = s == _playbackSpeed;
@@ -698,17 +923,10 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
                     dense: true,
                     title: Text(
                       '${s == s.truncateToDouble() ? s.toInt() : s}x',
-                      style: TextStyle(
-                        color: selected ? AppTheme.primary : Colors.white,
-                        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                      ),
+                      style: TextStyle(color: selected ? AppTheme.primary : Colors.white, fontWeight: selected ? FontWeight.bold : FontWeight.normal),
                     ),
                     trailing: selected ? const Icon(Icons.check, color: AppTheme.primary, size: 18) : null,
-                    onTap: () {
-                      _jsSpeed(s);
-                      Navigator.pop(context);
-                      _showControlsTemporarily();
-                    },
+                    onTap: () { _jsSpeed(s); Navigator.pop(context); _showControlsTemporarily(); },
                   );
                 }),
               ],
@@ -720,14 +938,13 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
   }
 
   // ---------------------------------------------------------------------------
-  // Chat section
+  // Chat section (live classes)
   // ---------------------------------------------------------------------------
   Widget _buildChatSection() {
     return Container(
       color: Colors.grey.shade50,
       child: Column(
         children: [
-          // Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: Colors.white,
@@ -735,15 +952,10 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
               children: [
                 Icon(Icons.chat_bubble_outline, size: 16, color: AppTheme.textSecondary),
                 SizedBox(width: 8),
-                Text(
-                  'Lecture Live Chat',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-                ),
+                Text('Lecture Live Chat', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
               ],
             ),
           ),
-
-          // Messages
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -768,10 +980,7 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: AppTheme.border),
                           ),
-                          child: Text(
-                            _chatMessages[index],
-                            style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
-                          ),
+                          child: Text(_chatMessages[index], style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary)),
                         ),
                       ),
                     ],
@@ -780,8 +989,6 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
               },
             ),
           ),
-
-          // Text input
           Container(
             padding: const EdgeInsets.all(12),
             color: Colors.white,
@@ -804,10 +1011,99 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
                   onPressed: () {
                     final text = _chatController.text.trim();
                     if (text.isNotEmpty) {
-                      setState(() {
-                        _chatMessages.add(text);
-                        _chatController.clear();
-                      });
+                      setState(() { _chatMessages.add(text); _chatController.clear(); });
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Notes section (recorded classes)
+  // ---------------------------------------------------------------------------
+  Widget _buildNotesSection() {
+    return Container(
+      color: Colors.grey.shade50,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            color: Colors.white,
+            child: const Row(
+              children: [
+                Icon(Icons.edit_note, size: 18, color: AppTheme.textSecondary),
+                SizedBox(width: 8),
+                Text('Personal Notes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _savedNotes.isEmpty
+                ? Center(
+                    child: Text(
+                      'Add your notes below',
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _savedNotes.length,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.border),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.sticky_note_2_outlined, size: 14, color: AppTheme.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(_savedNotes[index], style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary, height: 1.4)),
+                            ),
+                            GestureDetector(
+                              onTap: () => setState(() => _savedNotes.removeAt(index)),
+                              child: const Icon(Icons.close, size: 14, color: AppTheme.textSecondary),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.white,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _notesController,
+                    maxLines: 2,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'Write a note...',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      fillColor: Colors.grey.shade50,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.save_outlined, color: AppTheme.primary, size: 22),
+                  onPressed: () {
+                    final text = _notesController.text.trim();
+                    if (text.isNotEmpty) {
+                      setState(() { _savedNotes.add(text); _notesController.clear(); });
                     }
                   },
                 ),
@@ -822,7 +1118,7 @@ function ytListen() { document.getElementById('player').contentWindow.postMessag
   // ---------------------------------------------------------------------------
   // Utility
   // ---------------------------------------------------------------------------
-  String _formatTime(double seconds) {
+  String _formatPlayerTime(double seconds) {
     if (seconds.isNaN || seconds.isInfinite) return '0:00';
     final total = seconds.toInt();
     final h = total ~/ 3600;

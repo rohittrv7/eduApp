@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -568,53 +569,52 @@ class _BatchDetailsScreenState extends State<BatchDetailsScreen> with SingleTick
   }
 
   Widget _buildLiveLecturesTab(List<LiveClass> classes, bool isEnrolled) {
-    if (classes.isEmpty) {
-      return const Center(child: Text('No live lectures scheduled yet.'));
+    // Filter: only show active (live now) and approved/scheduled (upcoming)
+    final visibleClasses = classes
+        .where((c) => c.status == 'active' || c.status == 'approved' || c.status == 'scheduled')
+        .toList();
+
+    if (visibleClasses.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('📡', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 12),
+              const Text(
+                'No live lectures scheduled',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Live and upcoming sessions will appear here.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: classes.length,
+      itemCount: visibleClasses.length,
       itemBuilder: (context, index) {
-        final live = classes[index];
-        final isLive = live.status == 'live';
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(16),
-            title: Text(live.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 6),
-                Text(
-                  'Scheduled: ${UIHelpers.formatDate(live.scheduledAt)} at ${UIHelpers.formatTime(live.scheduledAt)}',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            trailing: isLive
-                ? Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(8)),
-                    child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
-                  )
-                : Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
-                    child: Text(live.status.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
-            onTap: () {
-              if (!isEnrolled) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enroll to view live classes.')),
-                );
-              } else {
-                context.push('/live/${live.id}');
-              }
-            },
-          ),
+        final live = visibleClasses[index];
+        return _BatchLiveClassCard(
+          liveClass: live,
+          onTap: () {
+            if (!isEnrolled) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please enroll to view live classes.')),
+              );
+            } else {
+              context.push('/live/${live.id}');
+            }
+          },
         );
       },
     );
@@ -668,6 +668,220 @@ class _BatchDetailsScreenState extends State<BatchDetailsScreen> with SingleTick
           ),
         );
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Batch live class card (active / upcoming styles)
+// ---------------------------------------------------------------------------
+class _BatchLiveClassCard extends StatefulWidget {
+  final LiveClass liveClass;
+  final VoidCallback onTap;
+
+  const _BatchLiveClassCard({required this.liveClass, required this.onTap});
+
+  @override
+  State<_BatchLiveClassCard> createState() => _BatchLiveClassCardState();
+}
+
+class _BatchLiveClassCardState extends State<_BatchLiveClassCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseCtrl;
+  late Animation<double> _pulseAnim;
+  Timer? _timer;
+  Duration _remaining = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 0.6, end: 1.0).animate(_pulseCtrl);
+
+    _updateRemaining();
+    if (widget.liveClass.status != 'active') {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateRemaining());
+    }
+  }
+
+  void _updateRemaining() {
+    try {
+      final scheduledAt = DateTime.parse(widget.liveClass.scheduledAt).toLocal();
+      final diff = scheduledAt.difference(DateTime.now());
+      if (mounted) setState(() => _remaining = diff.isNegative ? Duration.zero : diff);
+    } catch (_) {}
+  }
+
+  String _formatCountdown(Duration d) {
+    final h = d.inHours.toString().padLeft(2, '0');
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (d.inDays > 0) return '${d.inDays}d ${h}h ${m}m';
+    return '$h:$m:$s';
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final live = widget.liveClass;
+    final isActive = live.status == 'active';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: isActive ? Colors.redAccent.withOpacity(0.45) : AppTheme.border,
+          width: isActive ? 1.5 : 1.0,
+        ),
+      ),
+      elevation: 0,
+      child: InkWell(
+        onTap: widget.onTap,
+        child: Row(
+          children: [
+            // Left gradient thumbnail
+            SizedBox(
+              width: 90,
+              height: 90,
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isActive
+                            ? [const Color(0xFF7F1D1D), const Color(0xFFB91C1C)]
+                            : [const Color(0xFF1E3A5F), AppTheme.primary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        isActive ? Icons.sensors : Icons.schedule_outlined,
+                        color: Colors.white.withOpacity(0.3),
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                  if (isActive)
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Right content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (isActive)
+                          AnimatedBuilder(
+                            animation: _pulseAnim,
+                            builder: (_, child) =>
+                                Opacity(opacity: _pulseAnim.value, child: child),
+                            child: _SmallBadge('LIVE', Colors.redAccent),
+                          )
+                        else
+                          _SmallBadge('UPCOMING', Colors.green),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            live.title,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textPrimary,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 12, color: AppTheme.textSecondary),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${UIHelpers.formatDate(live.scheduledAt)} · ${UIHelpers.formatTime(live.scheduledAt)}',
+                          style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (isActive)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Join Live Now',
+                          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      )
+                    else if (_remaining > Duration.zero)
+                      Text(
+                        'Starts in ${_formatCountdown(_remaining)}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SmallBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _SmallBadge(this.label, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
+      ),
     );
   }
 }

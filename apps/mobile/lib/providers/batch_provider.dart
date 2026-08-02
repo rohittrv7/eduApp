@@ -10,6 +10,7 @@ class BatchProvider extends ChangeNotifier {
   BatchDetail? _activeBatch;
   List<LiveClass> _liveClasses = [];
   List<StudyMaterialItem> _studyMaterials = [];
+  List<LiveClass> _upcomingLiveClasses = [];
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -19,6 +20,7 @@ class BatchProvider extends ChangeNotifier {
   BatchDetail? get activeBatch => _activeBatch;
   List<LiveClass> get liveClasses => _liveClasses;
   List<StudyMaterialItem> get studyMaterials => _studyMaterials;
+  List<LiveClass> get upcomingLiveClasses => _upcomingLiveClasses;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -115,6 +117,29 @@ class BatchProvider extends ChangeNotifier {
         _studyMaterials = data.map((s) => StudyMaterialItem.fromJson(s)).toList();
       }
     } catch (_) {}
+  }
+
+  // Upcoming Live Classes (global — not batch-specific)
+  Future<void> fetchUpcomingLiveClasses() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final res = await _apiClient.get('/live-classes/upcoming');
+      dynamic data = res.data;
+      if (data is Map) data = data['data'] ?? data;
+      if (data is List) {
+        _upcomingLiveClasses = data
+            .map((l) => LiveClass.fromJson(l as Map<String, dynamic>))
+            .toList();
+      } else {
+        _upcomingLiveClasses = [];
+      }
+    } catch (_) {
+      _upcomingLiveClasses = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // Delete Batch
