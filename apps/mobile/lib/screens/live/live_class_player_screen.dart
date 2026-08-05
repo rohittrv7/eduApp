@@ -111,7 +111,7 @@ class _LiveClassPlayerScreenState extends State<LiveClassPlayerScreen> {
       _startCountdownIfNeeded(liveClass);
     } catch (e) {
       setState(() {
-        _error = 'Failed to load live class. Please try again.';
+        _error = 'Failed to load live class.\n\nID: ${widget.classId}\nError: ${e.toString().length > 200 ? e.toString().substring(0, 200) : e.toString()}';
         _isLoading = false;
       });
     }
@@ -266,38 +266,57 @@ class _LiveClassPlayerScreenState extends State<LiveClassPlayerScreen> {
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-html,body { background:#000; overflow:hidden; width:100vw; height:100vh; touch-action:none; }
-.wrapper { position:relative; width:100%; height:100%; overflow:hidden; }
-iframe { position:absolute; top:-60px; left:0; width:100%; height:calc(100% + 120px); border:none; pointer-events:none; }
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:#000;overflow:hidden;width:100vw;height:100vh;}
+#wrap{position:absolute;inset:0;overflow:hidden;background:#000;}
+#player{position:absolute;top:-70px;left:-4px;width:calc(100% + 8px);height:calc(100% + 150px);border:none;pointer-events:none;}
+#blk-top{position:absolute;top:0;left:0;right:0;height:72px;background:#000;z-index:5;}
+#blk-bot{position:absolute;bottom:0;left:0;right:0;height:82px;background:#000;z-index:5;}
+#cover{display:none;position:absolute;inset:0;background:#000;z-index:20;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
+#cover-text{color:#fff;font-size:16px;font-family:sans-serif;}
+#replay-btn{background:#1a56db;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:15px;font-family:sans-serif;cursor:pointer;}
 </style>
 </head>
 <body>
-<div class="wrapper">
-<iframe id="player"
-  src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&playsinline=1&showinfo=0&origin=https://alledu.app"
-  allow="autoplay; encrypted-media" allowfullscreen>
-</iframe>
+<div id="wrap">
+  <div id="blk-top"></div>
+  <iframe id="player"
+    src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&playsinline=1&showinfo=0&origin=https://alledu.app"
+    allow="autoplay; encrypted-media; fullscreen" allowfullscreen>
+  </iframe>
+  <div id="blk-bot"></div>
+  <div id="cover">
+    <div id="cover-text">Video ended</div>
+    <button id="replay-btn" onclick="doReplay()">Watch Again</button>
+  </div>
 </div>
 <script>
+var ready=false;
+function send(obj){try{document.getElementById('player').contentWindow.postMessage(JSON.stringify(obj),'*');}catch(e){}}
+function ytPlay(){send({event:'command',func:'playVideo',args:[]});}
+function ytPause(){send({event:'command',func:'pauseVideo',args:[]});}
+function ytSeek(t){send({event:'command',func:'seekTo',args:[t,true]});}
+function ytUnmute(){send({event:'command',func:'unMute',args:[]});send({event:'command',func:'setVolume',args:[100]});}
+function ytSpeed(s){send({event:'command',func:'setPlaybackRate',args:[s]});}
+function ytListen(){send({event:'listening'});}
+function doReplay(){document.getElementById('cover').style.display='none';ytSeek(0);ytPlay();}
 window.addEventListener('message',function(e){
   if(typeof e.data!=='string')return;
   try{
     var d=JSON.parse(e.data);
-    if(d.event==='onReady'){console.log('YT_READY');document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'listening'}),'*');}
-    if(d.event==='onStateChange'){console.log('YT_STATE:'+d.info);}
+    if(d.event==='onReady'){ready=true;console.log('YT_READY');ytListen();}
+    if(d.event==='onStateChange'){
+      console.log('YT_STATE:'+d.info);
+      if(d.info===0){document.getElementById('cover').style.display='flex';}
+      else if(d.info===1){document.getElementById('cover').style.display='none';}
+    }
     if(d.event==='infoDelivery'&&d.info){
-      if(d.info.currentTime!==undefined)console.log('YT_TIME:'+d.info.currentTime);
-      if(d.info.duration!==undefined)console.log('YT_DUR:'+d.info.duration);
+      if(typeof d.info.currentTime==='number')console.log('YT_TIME:'+d.info.currentTime);
+      if(typeof d.info.duration==='number'&&d.info.duration>0)console.log('YT_DUR:'+d.info.duration);
     }
   }catch(err){}
 });
-function ytPlay(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'playVideo',args:[]}),'*');}
-function ytPause(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}),'*');}
-function ytSeek(t){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'seekTo',args:[t,true]}),'*');}
-function ytUnmute(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'unMute',args:[]}),'*');document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'setVolume',args:[100]}),'*');}
-function ytSpeed(s){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'setPlaybackRate',args:[s]}),'*');}
-function ytListen(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'listening'}),'*');}
+setInterval(function(){if(ready)ytListen();},500);
 </script>
 </body>
 </html>''';
@@ -310,38 +329,57 @@ function ytListen(){document.getElementById('player').contentWindow.postMessage(
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-html,body { background:#000; overflow:hidden; width:100vw; height:100vh; touch-action:none; }
-.wrapper { position:relative; width:100%; height:100%; overflow:hidden; }
-iframe { position:absolute; top:-60px; left:0; width:100%; height:calc(100% + 120px); border:none; pointer-events:none; }
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:#000;overflow:hidden;width:100vw;height:100vh;}
+#wrap{position:absolute;inset:0;overflow:hidden;background:#000;}
+#player{position:absolute;top:-70px;left:-4px;width:calc(100% + 8px);height:calc(100% + 150px);border:none;pointer-events:none;}
+#blk-top{position:absolute;top:0;left:0;right:0;height:72px;background:#000;z-index:5;}
+#blk-bot{position:absolute;bottom:0;left:0;right:0;height:82px;background:#000;z-index:5;}
+#cover{display:none;position:absolute;inset:0;background:#000;z-index:20;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
+#cover-text{color:#fff;font-size:16px;font-family:sans-serif;}
+#replay-btn{background:#1a56db;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:15px;font-family:sans-serif;cursor:pointer;}
 </style>
 </head>
 <body>
-<div class="wrapper">
-<iframe id="player"
-  src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=0&mute=0&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&playsinline=1&showinfo=0&origin=https://alledu.app"
-  allow="autoplay; encrypted-media" allowfullscreen>
-</iframe>
+<div id="wrap">
+  <div id="blk-top"></div>
+  <iframe id="player"
+    src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=0&mute=0&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&playsinline=1&showinfo=0&origin=https://alledu.app"
+    allow="autoplay; encrypted-media; fullscreen" allowfullscreen>
+  </iframe>
+  <div id="blk-bot"></div>
+  <div id="cover">
+    <div id="cover-text">Video ended</div>
+    <button id="replay-btn" onclick="doReplay()">Watch Again</button>
+  </div>
 </div>
 <script>
+var ready=false;
+function send(obj){try{document.getElementById('player').contentWindow.postMessage(JSON.stringify(obj),'*');}catch(e){}}
+function ytPlay(){send({event:'command',func:'playVideo',args:[]});}
+function ytPause(){send({event:'command',func:'pauseVideo',args:[]});}
+function ytSeek(t){send({event:'command',func:'seekTo',args:[t,true]});}
+function ytUnmute(){send({event:'command',func:'unMute',args:[]});send({event:'command',func:'setVolume',args:[100]});}
+function ytSpeed(s){send({event:'command',func:'setPlaybackRate',args:[s]});}
+function ytListen(){send({event:'listening'});}
+function doReplay(){document.getElementById('cover').style.display='none';ytSeek(0);ytPlay();}
 window.addEventListener('message',function(e){
   if(typeof e.data!=='string')return;
   try{
     var d=JSON.parse(e.data);
-    if(d.event==='onReady'){console.log('YT_READY');document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'listening'}),'*');}
-    if(d.event==='onStateChange'){console.log('YT_STATE:'+d.info);}
+    if(d.event==='onReady'){ready=true;console.log('YT_READY');ytListen();}
+    if(d.event==='onStateChange'){
+      console.log('YT_STATE:'+d.info);
+      if(d.info===0){document.getElementById('cover').style.display='flex';}
+      else if(d.info===1){document.getElementById('cover').style.display='none';}
+    }
     if(d.event==='infoDelivery'&&d.info){
-      if(d.info.currentTime!==undefined)console.log('YT_TIME:'+d.info.currentTime);
-      if(d.info.duration!==undefined)console.log('YT_DUR:'+d.info.duration);
+      if(typeof d.info.currentTime==='number')console.log('YT_TIME:'+d.info.currentTime);
+      if(typeof d.info.duration==='number'&&d.info.duration>0)console.log('YT_DUR:'+d.info.duration);
     }
   }catch(err){}
 });
-function ytPlay(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'playVideo',args:[]}),'*');}
-function ytPause(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}),'*');}
-function ytSeek(t){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'seekTo',args:[t,true]}),'*');}
-function ytUnmute(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'unMute',args:[]}),'*');document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'setVolume',args:[100]}),'*');}
-function ytSpeed(s){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'command',func:'setPlaybackRate',args:[s]}),'*');}
-function ytListen(){document.getElementById('player').contentWindow.postMessage(JSON.stringify({event:'listening'}),'*');}
+setInterval(function(){if(ready)ytListen();},500);
 </script>
 </body>
 </html>''';
@@ -720,83 +758,91 @@ function ytListen(){document.getElementById('player').contentWindow.postMessage(
       );
     }
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _showControlsTemporarily,
-      child: Stack(
-        children: [
-          InAppWebView(
-            initialData: InAppWebViewInitialData(
-              data: isLive ? _buildLiveHtml(videoId) : _buildRecordingHtml(videoId),
-              mimeType: 'text/html',
-              encoding: 'utf-8',
-              baseUrl: WebUri('https://alledu.app'),
-            ),
-            initialSettings: InAppWebViewSettings(
-              mediaPlaybackRequiresUserGesture: false,
-              allowsInlineMediaPlayback: true,
-              transparentBackground: true,
-              disableHorizontalScroll: true,
-              disableVerticalScroll: true,
-              supportZoom: false,
-              javaScriptEnabled: true,
-              mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-            ),
-            onWebViewCreated: (ctrl) => _webCtrl = ctrl,
-            onConsoleMessage: (ctrl, msg) => _handleConsoleMessage(msg.message),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // WebView
+        InAppWebView(
+          initialData: InAppWebViewInitialData(
+            data: isLive ? _buildLiveHtml(videoId) : _buildRecordingHtml(videoId),
+            mimeType: 'text/html',
+            encoding: 'utf-8',
+            baseUrl: WebUri('https://alledu.app'),
           ),
-          // Watermark
+          initialSettings: InAppWebViewSettings(
+            mediaPlaybackRequiresUserGesture: false,
+            allowsInlineMediaPlayback: true,
+            transparentBackground: true,
+            disableHorizontalScroll: true,
+            disableVerticalScroll: true,
+            supportZoom: false,
+            javaScriptEnabled: true,
+            mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+          ),
+          onWebViewCreated: (ctrl) => _webCtrl = ctrl,
+          onConsoleMessage: (ctrl, msg) => _handleConsoleMessage(msg.message),
+        ),
+        // Transparent tap-catcher to toggle controls
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _showControlsTemporarily,
+            child: const ColoredBox(color: Colors.transparent),
+          ),
+        ),
+        // Watermark
+        Positioned(
+          top: 10,
+          right: 12,
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: 0.35,
+              child: Text(
+                'alledu',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  shadows: [Shadow(blurRadius: 4, color: Colors.black.withOpacity(0.7))],
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Loading indicator
+        if (!_isReady)
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
+        // Mute banner (live only)
+        if (isLive && _isMuted && _isReady)
           Positioned(
-            top: 10,
-            right: 12,
-            child: IgnorePointer(
-              child: Opacity(
-                opacity: 0.35,
-                child: Text(
-                  'alledu',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
-                    shadows: [Shadow(blurRadius: 4, color: Colors.black.withOpacity(0.7))],
+            bottom: 56,
+            left: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: _jsUnmute,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.volume_off, color: Colors.white, size: 16),
+                      SizedBox(width: 6),
+                      Text('Tap to unmute', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
-          // Loading indicator
-          if (!_isReady)
-            const Center(child: CircularProgressIndicator(color: Colors.white)),
-          // Mute banner (live only)
-          if (isLive && _isMuted && _isReady)
-            Positioned(
-              bottom: 56,
-              left: 0,
-              right: 0,
-              child: GestureDetector(
-                onTap: _jsUnmute,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.volume_off, color: Colors.white, size: 16),
-                        SizedBox(width: 6),
-                        Text('Tap to unmute', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          // Custom controls overlay
-          AnimatedOpacity(
+        // Custom controls overlay — IgnorePointer properly tied to visibility
+        Positioned.fill(
+          child: AnimatedOpacity(
             opacity: _showControls ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 300),
             child: IgnorePointer(
@@ -804,8 +850,8 @@ function ytListen(){document.getElementById('player').contentWindow.postMessage(
               child: _buildControlsOverlay(),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -938,82 +984,153 @@ function ytListen(){document.getElementById('player').contentWindow.postMessage(
   }
 
   // ---------------------------------------------------------------------------
-  // Chat section (live classes)
+  // Chat section (live classes) — real scrollable chat with input
   // ---------------------------------------------------------------------------
   Widget _buildChatSection() {
+    final ScrollController scrollCtrl = ScrollController();
+
     return Container(
       color: Colors.grey.shade50,
       child: Column(
         children: [
+          // Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: Colors.white,
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.chat_bubble_outline, size: 16, color: AppTheme.textSecondary),
-                SizedBox(width: 8),
-                Text('Lecture Live Chat', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                Container(
+                  width: 8, height: 8,
+                  decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 8),
+                const Text('Live Chat', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                const Spacer(),
+                Text('${_chatMessages.length} messages', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
               ],
             ),
           ),
+          // Messages list
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.all(16),
+              controller: scrollCtrl,
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
               itemCount: _chatMessages.length,
               itemBuilder: (context, index) {
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
+                final msg = _chatMessages[index];
+                // Determine if it's the user's own message (last one added by user)
+                final isOwnMsg = index == _chatMessages.length - 1 && _chatMessages.length > 4;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: isOwnMsg ? MainAxisAlignment.end : MainAxisAlignment.start,
                     children: [
-                      CircleAvatar(
-                        radius: 10,
-                        backgroundColor: AppTheme.primary.withOpacity(0.1),
-                        child: const Text('U', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppTheme.border),
+                      if (!isOwnMsg) ...[
+                        CircleAvatar(
+                          radius: 13,
+                          backgroundColor: AppTheme.primary.withOpacity(0.12),
+                          child: Text(
+                            _getChatAvatar(index),
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primary),
                           ),
-                          child: Text(_chatMessages[index], style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary)),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: isOwnMsg ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                          children: [
+                            if (!isOwnMsg)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 3, left: 2),
+                                child: Text(
+                                  _getChatSender(index),
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+                                ),
+                              ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isOwnMsg ? AppTheme.primary : Colors.white,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: const Radius.circular(12),
+                                  topRight: const Radius.circular(12),
+                                  bottomLeft: Radius.circular(isOwnMsg ? 12 : 2),
+                                  bottomRight: Radius.circular(isOwnMsg ? 2 : 12),
+                                ),
+                                border: isOwnMsg ? null : Border.all(color: AppTheme.border),
+                              ),
+                              child: Text(
+                                msg,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isOwnMsg ? Colors.white : AppTheme.textPrimary,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      if (isOwnMsg) ...[
+                        const SizedBox(width: 8),
+                        const CircleAvatar(
+                          radius: 13,
+                          backgroundColor: AppTheme.primary,
+                          child: Text('Me', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
+                        ),
+                      ],
                     ],
                   ),
                 );
               },
             ),
           ),
+          // Input area
           Container(
-            padding: const EdgeInsets.all(12),
-            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: Colors.grey.shade200)),
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _chatController,
                     style: const TextStyle(fontSize: 13),
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (text) => _sendChat(text, scrollCtrl),
                     decoration: InputDecoration(
-                      hintText: 'Say something in chat...',
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      hintText: 'Ask a question...',
+                      hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      filled: true,
                       fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send, color: AppTheme.primary, size: 20),
-                  onPressed: () {
-                    final text = _chatController.text.trim();
-                    if (text.isNotEmpty) {
-                      setState(() { _chatMessages.add(text); _chatController.clear(); });
-                    }
-                  },
+                GestureDetector(
+                  onTap: () => _sendChat(_chatController.text, scrollCtrl),
+                  child: Container(
+                    width: 40, height: 40,
+                    decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                    child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                  ),
                 ),
               ],
             ),
@@ -1021,6 +1138,35 @@ function ytListen(){document.getElementById('player').contentWindow.postMessage(
         ],
       ),
     );
+  }
+
+  void _sendChat(String text, ScrollController scrollCtrl) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    setState(() {
+      _chatMessages.add(trimmed);
+      _chatController.clear();
+    });
+    // Auto-scroll to bottom after a short delay
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (scrollCtrl.hasClients) {
+        scrollCtrl.animateTo(
+          scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  String _getChatAvatar(int index) {
+    const avatars = ['A', 'B', 'R', 'S', 'M', 'K', 'P', 'D'];
+    return avatars[index % avatars.length];
+  }
+
+  String _getChatSender(int index) {
+    const senders = ['Aryan S.', 'Bhumi R.', 'Ravi K.', 'Sneha P.', 'Mohan T.', 'Kavya N.', 'Priya M.', 'Dev A.'];
+    return senders[index % senders.length];
   }
 
   // ---------------------------------------------------------------------------

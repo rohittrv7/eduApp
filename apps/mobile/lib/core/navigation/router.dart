@@ -23,6 +23,9 @@ import 'package:alledu_mobile/screens/quizzes/quizzes_list_screen.dart';
 import 'package:alledu_mobile/screens/quizzes/quiz_take_screen.dart';
 import 'package:alledu_mobile/screens/quizzes/create_quiz_screen.dart';
 import 'package:alledu_mobile/screens/profile/profile_screen.dart';
+import 'package:alledu_mobile/screens/leaderboard/leaderboard_screen.dart';
+import 'package:alledu_mobile/screens/announcements/announcements_screen.dart';
+import 'package:alledu_mobile/screens/videos/video_player_screen.dart';
 import 'package:alledu_mobile/config/theme.dart';
 
 class AppNavigation {
@@ -158,6 +161,21 @@ class AppNavigation {
             GoRoute(
               path: '/profile',
               builder: (context, state) => const ProfileScreen(),
+            ),
+            GoRoute(
+              path: '/leaderboard',
+              builder: (context, state) => const LeaderboardScreen(),
+            ),
+            GoRoute(
+              path: '/announcements',
+              builder: (context, state) => const AnnouncementsScreen(),
+            ),
+            GoRoute(
+              path: '/videos/:videoId',
+              builder: (context, state) {
+                final videoId = state.pathParameters['videoId'] ?? '';
+                return VideoPlayerScreen(videoId: videoId);
+              },
             ),
           ],
         ),

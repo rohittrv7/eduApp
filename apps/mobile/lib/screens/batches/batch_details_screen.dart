@@ -553,9 +553,9 @@ class _BatchDetailsScreenState extends State<BatchDetailsScreen> with SingleTick
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Please enroll in the batch to unlock this video.')),
                         );
-                      } else {
-                        // Navigate to live/video player matching video id
-                        context.push('/live/${video.id}');
+                    } else {
+                        // VideoPlayerScreen handles both regular videos and live recordings
+                        context.push('/videos/${video.id}');
                       }
                     },
                   );

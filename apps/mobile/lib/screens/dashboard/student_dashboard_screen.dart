@@ -624,7 +624,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                     _buildQuickLinkCard(
                       label: 'Test Series',
                       icon: const Icon(Icons.bar_chart_outlined, color: Colors.blue, size: 20),
-                      onTap: () => context.go('/tests'),
+                      onTap: () => context.go('/quizzes'),
                     ),
                     _buildQuickLinkCard(
                       label: 'Doubts',

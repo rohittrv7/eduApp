@@ -1,9 +1,7 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Star,
   Users,
-  BookOpen,
   Sparkles,
   CheckCircle2,
   PlayCircle,
@@ -12,13 +10,11 @@ import {
   Zap,
   ArrowRight,
   ShieldCheck,
-  Smartphone,
   MessageSquare,
   BarChart3,
   Video,
   FileText,
   ChevronRight,
-  Download,
 } from 'lucide-react';
 import { BatchCard } from '@/components/ui/BatchCard';
 
@@ -166,11 +162,15 @@ const FAQS = [
   },
 ];
 
+import { PwaRedirect } from '@/components/PwaRedirect';
+
 export default async function HomePage() {
   const featuredBatches = await getFeaturedBatches();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-blue-600 selection:text-white overflow-x-hidden">
+      {/* PWA detection — redirects to /login when opened as installed app */}
+      <PwaRedirect />
       {/* Top Banner Notice */}
       <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700 py-2.5 px-4 text-center text-xs font-semibold text-white sm:text-sm tracking-wide">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider backdrop-blur-md">
@@ -517,54 +517,6 @@ export default async function HomePage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Mobile App Callout */}
-      <section className="py-16 md:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 p-8 md:p-14 text-white shadow-2xl">
-            <div className="relative z-10 max-w-2xl">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-extrabold uppercase tracking-wider backdrop-blur-md">
-                <Smartphone size={14} /> Learn Anywhere, Anytime
-              </span>
-              <h2 className="mt-4 text-3xl font-black sm:text-4xl lg:text-5xl leading-tight tracking-tight">
-                Download the Official allEdu Android App
-              </h2>
-              <p className="mt-4 text-base text-blue-100 leading-relaxed">
-                Enjoy low-bandwidth video mode, offline video downloads, instant push alerts for live classes, and quick doubt uploading directly from your Android device.
-              </p>
-
-              {/* Direct APK Download Button & Web App link */}
-              <div className="mt-8 flex flex-wrap items-center gap-4">
-                <a
-                  href="/alledu-mobile.apk"
-                  download="alledu-mobile.apk"
-                  className="inline-flex items-center gap-3 rounded-2xl bg-white px-7 py-4 text-base font-extrabold text-slate-900 shadow-xl hover:bg-slate-100 hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  <Download size={22} className="text-blue-600 animate-bounce" /> Download Android APK (73 MB)
-                </a>
-
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-2 rounded-2xl border border-white/30 bg-white/10 px-6 py-4 text-sm font-bold text-white backdrop-blur-md hover:bg-white/20 transition-all"
-                >
-                  <Smartphone size={18} /> Open Web App
-                </Link>
-              </div>
-
-              {/* APK Specs & Trust Indicators */}
-              <div className="mt-6 flex flex-wrap items-center gap-4 text-xs text-blue-200 font-semibold">
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="text-emerald-400" /> 100% Virus & Malware Free
-                </span>
-                <span>•</span>
-                <span>v1.0.0 (Official Release)</span>
-                <span>•</span>
-                <span>Requires Android 7.0+</span>
-              </div>
-            </div>
           </div>
         </div>
       </section>
