@@ -5,45 +5,38 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
-  workflow_dispatch: # manual re-run from GitHub Actions UI
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ── Job 1: API build + test ──────────────────────────────────────
   api:
     name: API – Build & Test
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      # Pinned to exact SHA for reliability during GitHub CDN outages
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9.0.0
-      - uses: actions/setup-node@1d0ff469b10e15ce6b4b53b9a5c7a87c10d4da1c # v4.2.0
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
-      - name: Restore pnpm store cache
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+      - name: Cache pnpm store
+        uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: pnpm-store-${{ runner.os }}-
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build API
-        run: pnpm --filter @educational/api build
-
-      - name: Test API
-        run: pnpm --filter @educational/api test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @educational/api build
+      - run: pnpm --filter @educational/api test
         env:
           NODE_ENV: test
           JWT_ACCESS_SECRET: test-access-secret-32-chars-minimum
@@ -51,31 +44,30 @@ jobs:
           JWT_ACCESS_EXPIRES_IN: 15m
           JWT_REFRESH_EXPIRES_IN: 7d
 
-  # ── Job 2: Web build + test (parallel) ───────────────────────────
   web:
     name: Web – Build & Test
     runs-on: ubuntu-latest
     timeout-minutes: 12
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9.0.0
-      - uses: actions/setup-node@1d0ff469b10e15ce6b4b53b9a5c7a87c10d4da1c # v4.2.0
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
-      - name: Restore pnpm store cache
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+      - name: Cache pnpm store
+        uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: pnpm-store-${{ runner.os }}-
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
 
-      - name: Restore Next.js build cache
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+      - name: Cache Next.js build
+        uses: actions/cache@v4
         with:
           path: apps/web/.next/cache
           key: nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/src/**') }}
@@ -83,11 +75,8 @@ jobs:
             nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
             nextjs-${{ runner.os }}-
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build Web
-        run: pnpm --filter @educational/web build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @educational/web build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
           NEXT_PUBLIC_SOCKET_URL: http://localhost:3001
@@ -102,6 +91,4 @@ jobs:
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '000000000000'
           NEXT_PUBLIC_FIREBASE_APP_ID: '1:000000000000:web:placeholder'
           NEXT_PUBLIC_FIREBASE_VAPID_KEY: placeholder
-
-      - name: Test Web
-        run: pnpm --filter @educational/web test
+      - run: pnpm --filter @educational/web test
