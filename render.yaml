@@ -4,9 +4,8 @@ services:
     runtime: node
     region: singapore
     plan: free
-    rootDir: apps/api
-    buildCommand: npm install -g pnpm@9.0.0 && cd /opt/render/project/src && pnpm install --frozen-lockfile && pnpm --filter @educational/api build
-    startCommand: node dist/main.js
+    buildCommand: npm install -g pnpm@9.0.0 && pnpm install --frozen-lockfile && pnpm --filter @educational/api build
+    startCommand: node apps/api/dist/main.js
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
