@@ -1,0 +1,24 @@
+#!/bin/sh
+# Enforce conventional commit format:
+# type(scope): message
+# Examples: feat(auth): add OTP login, fix(web): resolve thumbnail error
+
+commit_msg=$(cat "$1")
+pattern="^(feat|fix|chore|docs|style|refactor|test|perf|ci|build|revert)(\(.+\))?: .{1,100}$"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo ""
+  echo "[commit-msg] ERROR: Invalid commit message format."
+  echo ""
+  echo "  Expected: type(scope): short description"
+  echo "  Types: feat | fix | chore | docs | style | refactor | test | perf | ci | build | revert"
+  echo ""
+  echo "  Examples:"
+  echo "    feat(auth): add Google OAuth login"
+  echo "    fix(web): resolve batch thumbnail not showing"
+  echo "    chore: update dependencies"
+  echo ""
+  echo "  Your message: $commit_msg"
+  echo ""
+  exit 1
+fi

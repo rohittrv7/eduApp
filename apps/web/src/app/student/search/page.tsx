@@ -19,7 +19,15 @@ const TABS: { key: Tab; label: string }[] = [
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<DashboardLayout><div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#1a56db] border-t-transparent" /></div></DashboardLayout>}>
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="flex justify-center py-20">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#1a56db] border-t-transparent" />
+          </div>
+        </DashboardLayout>
+      }
+    >
       <SearchPageInner />
     </Suspense>
   );
@@ -161,7 +169,7 @@ function SearchPageInner() {
                             className="h-full w-full rounded-full object-cover"
                           />
                         ) : (
-                          (teacher.fullName ?? teacher.email ?? 'T').charAt(0).toUpperCase()
+                          (teacher.fullName || 'T').charAt(0).toUpperCase()
                         )}
                       </div>
                       <div>

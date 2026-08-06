@@ -1,0 +1,13 @@
+echo "[pre-push] Running type-check on web..."
+pnpm --filter @educational/web type-check
+
+echo "[pre-push] Running type-check on api..."
+pnpm --filter @educational/api type-check
+
+echo "[pre-push] Building web..."
+pnpm build:web
+
+echo "[pre-push] Building api..."
+pnpm build:api
+
+echo "[pre-push] All checks passed. Proceeding with push."

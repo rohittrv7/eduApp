@@ -75,7 +75,14 @@ function makeEnrollmentRepo(overrides: Partial<Record<string, jest.Mock>> = {}) 
 }
 
 function makeService(batchRepo: any, enrollmentRepo: any): BatchesService {
-  const service = new BatchesService(batchRepo, enrollmentRepo);
+  const service = new BatchesService(
+    batchRepo,
+    enrollmentRepo,
+    {} as any, // videoRepo
+    {} as any, // subjectRepo
+    {} as any, // chapterRepo
+    {} as any, // liveClassRepo
+  );
   return service;
 }
 

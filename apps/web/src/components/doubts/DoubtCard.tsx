@@ -18,9 +18,7 @@ export function DoubtCard({ doubt }: DoubtCardProps) {
   const [resolve] = useResolveDoubtMutation();
 
   const canResolve =
-    user?.role === 'admin' ||
-    user?.role === 'teacher' ||
-    user?.id === doubt.student.id;
+    user?.role === 'admin' || user?.role === 'teacher' || user?.id === doubt.student.id;
 
   const canReply = user?.role === 'admin' || user?.role === 'teacher';
 
@@ -43,9 +41,7 @@ export function DoubtCard({ doubt }: DoubtCardProps) {
             >
               {doubt.status === 'resolved' ? '✓ Resolved' : 'Open'}
             </span>
-            <span className="text-xs text-gray-400">
-              by {doubt.student.fullName}
-            </span>
+            <span className="text-xs text-gray-400">by {doubt.student.fullName}</span>
           </div>
           <span className="text-xs text-gray-400">
             {new Date(doubt.createdAt).toLocaleDateString('en-IN', {
@@ -85,7 +81,9 @@ export function DoubtCard({ doubt }: DoubtCardProps) {
               className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 transition-colors"
             >
               <MessageCircle size={14} />
-              <span>{doubt.replies!.length} {doubt.replies!.length === 1 ? 'reply' : 'replies'}</span>
+              <span>
+                {doubt.replies!.length} {doubt.replies!.length === 1 ? 'reply' : 'replies'}
+              </span>
               {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
           )}
@@ -119,11 +117,13 @@ export function DoubtCard({ doubt }: DoubtCardProps) {
           {doubt.replies.map((reply) => (
             <div key={reply.id} className="flex gap-2">
               <div className="flex-shrink-0 h-7 w-7 rounded-full bg-[#1a56db] flex items-center justify-center text-white text-xs font-bold">
-                {(reply.author?.fullName ?? reply.author?.email ?? 'U').charAt(0).toUpperCase()}
+                {(reply.author?.fullName || 'U').charAt(0).toUpperCase()}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-gray-800">{reply.author?.fullName ?? reply.author?.email ?? 'User'}</span>
+                  <span className="text-xs font-semibold text-gray-800">
+                    {reply.author?.fullName || 'User'}
+                  </span>
                   {(reply.author.role === 'teacher' || reply.author.role === 'admin') && (
                     <span className="rounded-full bg-[#1a56db] px-1.5 py-0.5 text-[10px] font-medium text-white capitalize">
                       {reply.author.role}

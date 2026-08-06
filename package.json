@@ -9,10 +9,33 @@
     "build:api": "pnpm --filter @educational/api build",
     "build:web": "pnpm --filter @educational/web build",
     "start:api": "pnpm --filter @educational/api start",
-    "start:web": "pnpm --filter @educational/web start"
+    "start:web": "pnpm --filter @educational/web start",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "apps/web/**/*.{ts,tsx}": [
+      "eslint --fix --config apps/web/.eslintrc.json --resolve-plugins-relative-to apps/web",
+      "prettier --write --ignore-unknown"
+    ],
+    "apps/api/**/*.ts": [
+      "eslint --fix --config apps/api/.eslintrc.js --resolve-plugins-relative-to apps/api --ignore-pattern dist",
+      "prettier --write --ignore-unknown"
+    ],
+    "packages/**/*.{ts,tsx}": [
+      "prettier --write --ignore-unknown"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write --ignore-unknown"
+    ]
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
     "concurrently": "^8.2.2",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
     "prettier": "^3.2.0",
     "typescript": "^5.4.0"
   },

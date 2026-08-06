@@ -30,6 +30,7 @@ function makeLiveClass(overrides: Partial<LiveClass> = {}): LiveClass {
     status: LiveClassStatus.APPROVED,
     recording_url: null,
     viewer_count: 0,
+    subject_id: null,
     created_at: new Date(),
     updated_at: new Date(),
     batch: null as any,
@@ -56,6 +57,7 @@ function makeService(liveClassRepo: any): LiveClassesService {
     {} as any, // enrollmentRepo
     {} as any, // videoRepo
     {} as any, // redisService
+    {} as any, // reminderCron
   );
 }
 
