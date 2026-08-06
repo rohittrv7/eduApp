@@ -15,7 +15,9 @@ import { CreateLiveClassDto } from './dto/create-live-class.dto';
 import { ReminderCron } from '../notifications/reminder.cron';
 
 function isValidYouTubeUrl(url: string): boolean {
-  return /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|live\/|embed\/)|youtu\.be\/)[\w-]+/.test(url);
+  return /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|live\/|embed\/|shorts\/)[\w-]+|youtu\.be\/[\w-]+)/.test(
+    url,
+  );
 }
 
 function extractYouTubeVideoId(url: string): string {
@@ -138,7 +140,8 @@ export class LiveClassesService {
     if (data.title) liveClass.title = data.title;
     if (data.description !== undefined) liveClass.description = data.description;
     if (data.youtube_url) {
-      if (!isValidYouTubeUrl(data.youtube_url)) throw new BadRequestException('Invalid YouTube URL');
+      if (!isValidYouTubeUrl(data.youtube_url))
+        throw new BadRequestException('Invalid YouTube URL');
       liveClass.youtube_url = data.youtube_url;
       liveClass.youtube_video_id = extractYouTubeVideoId(data.youtube_url);
     }

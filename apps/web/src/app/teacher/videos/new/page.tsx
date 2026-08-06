@@ -15,7 +15,7 @@ import {
 
 /** Validates YouTube video URL (Req 19.2) */
 const YOUTUBE_URL_REGEX =
-  /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|embed\/|shorts\/)[\w-]{11}|youtu\.be\/[\w-]{11})/;
+  /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|live\/|embed\/|shorts\/)[\w-]+|youtu\.be\/[\w-]+)/;
 
 const schema = z.object({
   youtubeUrl: z
@@ -106,8 +106,10 @@ export default function NewVideoPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 rounded-xl border bg-white p-6 shadow-sm">
-
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-5 rounded-xl border bg-white p-6 shadow-sm"
+        >
           {/* YouTube URL */}
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -122,7 +124,8 @@ export default function NewVideoPage() {
               <p className="mt-1 text-xs text-red-600">{errors.youtubeUrl.message}</p>
             )}
             <p className="mt-1 text-xs text-gray-400">
-              Accepted: youtube.com/watch?v=..., youtube.com/embed/..., youtu.be/...
+              Accepted: youtube.com/watch?v=..., youtube.com/live/..., youtube.com/embed/...,
+              youtu.be/...
             </p>
           </div>
 
@@ -179,7 +182,9 @@ export default function NewVideoPage() {
                 </option>
               ))}
             </select>
-            {errors.batchId && <p className="mt-1 text-xs text-red-600">{errors.batchId.message}</p>}
+            {errors.batchId && (
+              <p className="mt-1 text-xs text-red-600">{errors.batchId.message}</p>
+            )}
           </div>
 
           {/* Subject tag */}

@@ -30,9 +30,17 @@ export function isValidMobile(mobile: string): boolean {
 
 /**
  * Validate a YouTube video URL
+ * Supported formats:
+ *   youtube.com/watch?v=ID
+ *   youtube.com/live/ID
+ *   youtube.com/embed/ID
+ *   youtube.com/shorts/ID
+ *   youtu.be/ID
  */
 export function isValidYouTubeUrl(url: string): boolean {
-  return /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|live\/|embed\/)|youtu\.be\/)[\w-]+/.test(url);
+  return /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|live\/|embed\/|shorts\/)[\w-]+|youtu\.be\/[\w-]+)/.test(
+    url,
+  );
 }
 
 /**

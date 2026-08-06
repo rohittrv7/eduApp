@@ -15,7 +15,7 @@ import { LanguagePref } from '../users/entities/user.entity';
 
 function extractYouTubeVideoId(url: string): string {
   const match = url.match(
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/,
+    /(?:youtube\.com\/(?:watch\?v=|live\/|embed\/|shorts\/)|youtu\.be\/)([\w-]+)/,
   );
   return match?.[1] ?? '';
 }
@@ -29,10 +29,7 @@ export class RecordedVideosService {
     private readonly enrollmentRepo: Repository<Enrollment>,
   ) {}
 
-  async create(
-    teacherId: string,
-    dto: CreateRecordedVideoDto,
-  ): Promise<RecordedVideo> {
+  async create(teacherId: string, dto: CreateRecordedVideoDto): Promise<RecordedVideo> {
     if (!isValidYouTubeUrl(dto.youtube_url)) {
       throw new BadRequestException('Invalid YouTube URL format');
     }
@@ -79,20 +76,14 @@ export class RecordedVideosService {
         where: { student_id: userId, batch_id: video.batch_id, is_active: true },
       });
       if (!enrollment) {
-        throw new ForbiddenException(
-          'You must be enrolled in this batch to access this video',
-        );
+        throw new ForbiddenException('You must be enrolled in this batch to access this video');
       }
     }
 
     return video;
   }
 
-  async update(
-    id: string,
-    teacherId: string,
-    dto: UpdateRecordedVideoDto,
-  ): Promise<RecordedVideo> {
+  async update(id: string, teacherId: string, dto: UpdateRecordedVideoDto): Promise<RecordedVideo> {
     const video = await this.videoRepo.findOne({ where: { id } });
     if (!video) {
       throw new NotFoundException(`Video ${id} not found`);
