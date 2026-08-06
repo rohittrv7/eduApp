@@ -86,6 +86,7 @@ export interface CreateLiveClassDto {
   chapter_id?: string;
   scheduled_at: string;
   youtube_url: string;
+  thumbnail?: string;
 }
 
 export interface CreateVideoDto {
@@ -212,6 +213,20 @@ export const teacherApi = baseApi.injectEndpoints({
     getTeacherVideos: builder.query<TeacherVideo[], void>({
       query: () => '/videos?role=teacher',
       providesTags: ['TeacherVideos'],
+      transformResponse: (response: unknown): TeacherVideo[] => {
+        if (!Array.isArray(response)) return [];
+        return (response as any[]).map((v) => ({
+          id: v.id,
+          title: v.title,
+          thumbnail: v.thumbnail ?? null,
+          viewCount: v.view_count ?? v.viewCount ?? 0,
+          avgWatchTimeSecs: v.avg_watch_time_secs ?? v.avgWatchTimeSecs ?? 0,
+          durationSeconds: v.duration_seconds ?? v.durationSeconds ?? 0,
+          batchTitle: v.batch?.name ?? v.batchTitle ?? v.batch_id ?? '',
+          chapterName: v.chapter?.name ?? v.chapterName,
+          createdAt: v.created_at ?? v.createdAt ?? new Date().toISOString(),
+        }));
+      },
     }),
     getTeacherQuizScores: builder.query<StudentQuizScore[], void>({
       query: () => '/quizzes/student-scores?role=teacher',
@@ -266,15 +281,29 @@ export const teacherApi = baseApi.injectEndpoints({
       providesTags: (_r, _e, quizId) => [{ type: 'TeacherQuizQuestions', id: quizId }],
     }),
     addQuestion: builder.mutation<Question, { quizId: string } & CreateQuestionDto>({
-      query: ({ quizId, ...body }) => ({ url: `/quizzes/${quizId}/questions`, method: 'POST', body }),
+      query: ({ quizId, ...body }) => ({
+        url: `/quizzes/${quizId}/questions`,
+        method: 'POST',
+        body,
+      }),
       invalidatesTags: (_r, _e, { quizId }) => [{ type: 'TeacherQuizQuestions', id: quizId }],
     }),
-    updateQuestion: builder.mutation<Question, { quizId: string; questionId: string } & Partial<CreateQuestionDto>>({
-      query: ({ quizId, questionId, ...body }) => ({ url: `/quizzes/${quizId}/questions/${questionId}`, method: 'PATCH', body }),
+    updateQuestion: builder.mutation<
+      Question,
+      { quizId: string; questionId: string } & Partial<CreateQuestionDto>
+    >({
+      query: ({ quizId, questionId, ...body }) => ({
+        url: `/quizzes/${quizId}/questions/${questionId}`,
+        method: 'PATCH',
+        body,
+      }),
       invalidatesTags: (_r, _e, { quizId }) => [{ type: 'TeacherQuizQuestions', id: quizId }],
     }),
     deleteQuestion: builder.mutation<void, { quizId: string; questionId: string }>({
-      query: ({ quizId, questionId }) => ({ url: `/quizzes/${quizId}/questions/${questionId}`, method: 'DELETE' }),
+      query: ({ quizId, questionId }) => ({
+        url: `/quizzes/${quizId}/questions/${questionId}`,
+        method: 'DELETE',
+      }),
       invalidatesTags: (_r, _e, { quizId }) => [{ type: 'TeacherQuizQuestions', id: quizId }],
     }),
 
@@ -308,11 +337,20 @@ export const teacherApi = baseApi.injectEndpoints({
         return [];
       },
     }),
-    createTeacherBatch: builder.mutation<Batch, {
-      name: string; description?: string; target_exam?: string;
-      price?: number; is_free?: boolean; language?: string;
-      thumbnail?: string; start_date?: string; end_date?: string;
-    }>({
+    createTeacherBatch: builder.mutation<
+      Batch,
+      {
+        name: string;
+        description?: string;
+        target_exam?: string;
+        price?: number;
+        is_free?: boolean;
+        language?: string;
+        thumbnail?: string;
+        start_date?: string;
+        end_date?: string;
+      }
+    >({
       query: (body) => ({ url: '/batches', method: 'POST', body }),
       invalidatesTags: ['TeacherBatches'],
     }),
@@ -336,7 +374,10 @@ export const teacherApi = baseApi.injectEndpoints({
     getChaptersBySubject: builder.query<Chapter[], string>({
       query: (subjectId) => `/chapters?subjectId=${subjectId}`,
     }),
-    createChapter: builder.mutation<Chapter, { subjectId: string; name: string; description?: string }>({
+    createChapter: builder.mutation<
+      Chapter,
+      { subjectId: string; name: string; description?: string }
+    >({
       query: ({ subjectId, name, description }) => ({
         url: '/chapters',
         method: 'POST',
@@ -376,7 +417,17 @@ export const teacherApi = baseApi.injectEndpoints({
     getStudyMaterialUrl: builder.query<{ url: string; expires_at: string }, string>({
       query: (id) => `/study-materials/${id}/url`,
     }),
-    getBatchStudents: builder.query<{ id: string; full_name: string; mobile: string; email: string; profile_photo: string | null; enrolled_at: string }[], string>({
+    getBatchStudents: builder.query<
+      {
+        id: string;
+        full_name: string;
+        mobile: string;
+        email: string;
+        profile_photo: string | null;
+        enrolled_at: string;
+      }[],
+      string
+    >({
       query: (batchId) => `/batches/${batchId}/students`,
       providesTags: (_r, _e, batchId) => [{ type: 'Batch', id: batchId }],
     }),

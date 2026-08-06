@@ -80,7 +80,7 @@ function Empty({ text }: { text: string }) {
 /* ─── page ──────────────────────────────────────────── */
 export default function StudentBatchesPage() {
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<'explore' | 'enrolled'>('explore');
+  const [tab, setTab] = useState<'explore' | 'enrolled'>('enrolled');
 
   const { data: allBatches = [], isLoading: loadingAll } = useGetAllBatchesQuery();
   const { data: enrolledBatches = [], isLoading: loadingEnrolled } = useGetEnrolledBatchesQuery();

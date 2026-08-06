@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { ImageIcon } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import {
   useCreateLiveClassMutation,
@@ -15,7 +16,7 @@ import {
 } from '@/store/teacherApi';
 
 const YOUTUBE_URL_REGEX =
-  /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|live\/|embed\/)|youtu\.be\/)[\w-]+/;
+  /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|live\/|embed\/|shorts\/)[\w-]+|youtu\.be\/[\w-]+)/;
 
 const schema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -28,6 +29,7 @@ const schema = z.object({
     .string()
     .min(1, 'YouTube URL is required')
     .regex(YOUTUBE_URL_REGEX, 'Enter a valid YouTube video or live stream URL'),
+  thumbnail: z.string().url('Enter a valid image URL').optional().or(z.literal('')),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -39,9 +41,12 @@ export default function NewLiveClassPage() {
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
 
   const { data: batchesRaw } = useGetTeacherBatchesQuery();
-  const { data: batchDetail } = useGetTeacherBatchDetailQuery(selectedBatchId, { skip: !selectedBatchId });
-  const { data: chaptersRaw = [] } = useGetChaptersBySubjectQuery(selectedSubjectId, { skip: !selectedSubjectId });
-
+  const { data: batchDetail } = useGetTeacherBatchDetailQuery(selectedBatchId, {
+    skip: !selectedBatchId,
+  });
+  const { data: chaptersRaw = [] } = useGetChaptersBySubjectQuery(selectedSubjectId, {
+    skip: !selectedSubjectId,
+  });
   const [createLiveClass, { isLoading }] = useCreateLiveClassMutation();
 
   const batches: Batch[] = Array.isArray(batchesRaw) ? batchesRaw : [];
@@ -52,8 +57,11 @@ export default function NewLiveClassPage() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
+
+  const thumbnailValue = watch('thumbnail');
 
   const onSubmit = async (values: FormValues) => {
     setServerError('');
@@ -66,6 +74,7 @@ export default function NewLiveClassPage() {
         chapter_id: values.chapterId || undefined,
         scheduled_at: new Date(values.scheduledAt).toISOString(),
         youtube_url: values.youtubeUrl,
+        thumbnail: values.thumbnail || undefined,
       }).unwrap();
       router.push('/teacher/live-classes');
     } catch (err: unknown) {
@@ -88,8 +97,10 @@ export default function NewLiveClassPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 rounded-xl border bg-white p-6 shadow-sm">
-
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-5 rounded-xl border bg-white p-6 shadow-sm"
+        >
           {/* Title */}
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -132,13 +143,17 @@ export default function NewLiveClassPage() {
             >
               <option value="">Select a batch</option>
               {batches.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
               ))}
             </select>
-            {errors.batchId && <p className="mt-1 text-xs text-red-600">{errors.batchId.message}</p>}
+            {errors.batchId && (
+              <p className="mt-1 text-xs text-red-600">{errors.batchId.message}</p>
+            )}
           </div>
 
-          {/* Subject — only show if batch selected and has subjects */}
+          {/* Subject */}
           {selectedBatchId && subjects.length > 0 && (
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Subject</label>
@@ -153,13 +168,15 @@ export default function NewLiveClassPage() {
               >
                 <option value="">Select a subject (optional)</option>
                 {subjects.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
                 ))}
               </select>
             </div>
           )}
 
-          {/* Chapter — only show if subject selected and has chapters */}
+          {/* Chapter */}
           {selectedSubjectId && chapters.length > 0 && (
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Chapter</label>
@@ -169,7 +186,9 @@ export default function NewLiveClassPage() {
               >
                 <option value="">Select a chapter (optional)</option>
                 {chapters.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -205,8 +224,48 @@ export default function NewLiveClassPage() {
               <p className="mt-1 text-xs text-red-600">{errors.youtubeUrl.message}</p>
             )}
             <p className="mt-1 text-xs text-gray-400">
-              Accepted formats: youtube.com/watch?v=..., youtube.com/live/..., youtu.be/...
+              Accepted: youtube.com/watch?v=..., youtube.com/live/..., youtu.be/...
             </p>
+          </div>
+
+          {/* Thumbnail URL + live preview */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Thumbnail Image URL{' '}
+              <span className="text-xs font-normal text-gray-400">(optional)</span>
+            </label>
+            <input
+              {...register('thumbnail')}
+              placeholder="https://example.com/thumbnail.jpg"
+              className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
+            />
+            {errors.thumbnail && (
+              <p className="mt-1 text-xs text-red-600">{errors.thumbnail.message}</p>
+            )}
+            {thumbnailValue && !errors.thumbnail && (
+              <div className="mt-2">
+                <p className="mb-1 text-xs font-medium text-gray-500">Preview:</p>
+                <div className="relative aspect-video w-full max-w-xs overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={thumbnailValue}
+                    alt="Thumbnail preview"
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      const next = (e.target as HTMLImageElement).nextElementSibling;
+                      if (next) (next as HTMLElement).classList.remove('hidden');
+                    }}
+                  />
+                  <div className="hidden absolute inset-0 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-1 text-gray-400">
+                      <ImageIcon size={24} />
+                      <span className="text-xs">Could not load image</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {serverError && (

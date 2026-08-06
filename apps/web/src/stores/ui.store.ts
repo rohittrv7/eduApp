@@ -11,7 +11,7 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  sidebarOpen: true,
+  sidebarOpen: false, // default closed on mobile — lg:static shows it on desktop
   activeClassId: null,
   installPromptEvent: null,
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),

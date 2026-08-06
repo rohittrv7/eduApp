@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import apiClient from '@/../lib/api-client';
@@ -21,7 +21,7 @@ interface QuizQuestion {
   id: string;
   text: string;
   type: QuestionType;
-  options?: QuizOption[];   // mcq / true_false
+  options?: QuizOption[]; // mcq / true_false
   explanation?: string;
 }
 
@@ -42,7 +42,7 @@ interface QuizResult {
 
 interface LockInfo {
   message: string;
-  watchPercent: number;   // 0-100, how much the student has watched
+  watchPercent: number; // 0-100, how much the student has watched
 }
 
 // ─── QuestionRenderer ─────────────────────────────────────────────────────────
@@ -67,8 +67,7 @@ function QuestionRenderer({
   const qResult = result?.answers[question.id];
 
   const optionClass = (optId: string) => {
-    let base =
-      'w-full rounded-lg border px-4 py-2.5 text-left text-sm transition-colors';
+    let base = 'w-full rounded-lg border px-4 py-2.5 text-left text-sm transition-colors';
     if (result) {
       if (optId === qResult?.correctOptionId) {
         return base + ' border-green-500 bg-green-50 text-green-700';
@@ -160,6 +159,7 @@ function QuestionRenderer({
 export default function QuizAttemptPage() {
   const { quizId } = useParams<{ quizId: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
   const [lockInfo, setLockInfo] = useState<LockInfo | null>(null);
@@ -177,7 +177,9 @@ export default function QuizAttemptPage() {
   // Handle 403 locked state (Req 6.2, 6.5)
   useEffect(() => {
     if (!error) return;
-    const e = error as { response?: { status: number; data?: { message?: string; watchPercent?: number } } };
+    const e = error as {
+      response?: { status: number; data?: { message?: string; watchPercent?: number } };
+    };
     if (e?.response?.status === 403) {
       setLockInfo({
         message: e.response.data?.message ?? 'Watch more of the video to unlock this quiz.',
@@ -273,9 +275,7 @@ export default function QuizAttemptPage() {
                 <p className="text-xs text-gray-500">Score</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#1a56db]">
-                  {result.percentage.toFixed(0)}%
-                </p>
+                <p className="text-2xl font-bold text-[#1a56db]">{result.percentage.toFixed(0)}%</p>
                 <p className="text-xs text-gray-500">Percentage</p>
               </div>
               <div>

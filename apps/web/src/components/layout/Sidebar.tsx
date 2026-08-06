@@ -90,14 +90,14 @@ const ROLE_THEMES: Record<UserRole, RoleTheme> = {
     inactiveLinkClass: 'text-slate-600 hover:bg-blue-50 hover:text-blue-700',
   },
   teacher: {
-    sidebarBg: 'bg-emerald-950/95 text-slate-100 border-r border-emerald-900/50',
-    sidebarBorder: 'border-emerald-900/50',
-    logoBg: 'bg-emerald-500',
+    sidebarBg: 'bg-[#0f1c3f] text-slate-100 border-r border-[#1a3a7a]/50',
+    sidebarBorder: 'border-[#1a3a7a]/50',
+    logoBg: 'bg-[#1a56db]',
     logoText: 'text-white',
-    badgeClass: 'bg-emerald-900/60 text-emerald-300 border-emerald-700/60',
+    badgeClass: 'bg-[#1a3a7a]/60 text-blue-200 border-[#1a56db]/60',
     badgeLabel: 'Teacher Dashboard',
-    activeLinkClass: 'bg-emerald-600 text-white font-semibold shadow-md shadow-emerald-900/50',
-    inactiveLinkClass: 'text-emerald-200/70 hover:bg-emerald-900/50 hover:text-white',
+    activeLinkClass: 'bg-[#1a56db] text-white font-semibold shadow-md shadow-blue-900/50',
+    inactiveLinkClass: 'text-blue-200/70 hover:bg-[#1a3a7a]/50 hover:text-white',
   },
   admin: {
     sidebarBg: 'bg-slate-950 text-slate-100 border-r border-slate-800',
@@ -121,9 +121,7 @@ export function Sidebar() {
 
   const provider = process.env.NEXT_PUBLIC_VIDEO_PROVIDER ?? 'youtube';
   const allLinks = NAV_LINKS[role] ?? NAV_LINKS.student;
-  const links = allLinks.filter(
-    (item) => !item.requiresNonYoutube || provider !== 'youtube',
-  );
+  const links = allLinks.filter((item) => !item.requiresNonYoutube || provider !== 'youtube');
 
   return (
     <>
@@ -139,18 +137,33 @@ export function Sidebar() {
         className={cn(
           'fixed left-0 top-0 z-30 flex h-full w-64 flex-col shadow-lg transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none',
           theme.sidebarBg,
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         {/* Logo */}
-        <div className={cn('flex h-16 items-center justify-between border-b px-4', theme.sidebarBorder)}>
+        <div
+          className={cn(
+            'flex h-16 items-center justify-between border-b px-4',
+            theme.sidebarBorder,
+          )}
+        >
           <Link href="/" className="flex items-center gap-2.5">
-            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg font-bold text-sm shadow-sm', theme.logoBg)}>
+            <div
+              className={cn(
+                'flex h-8 w-8 items-center justify-center rounded-lg font-bold text-sm shadow-sm',
+                theme.logoBg,
+              )}
+            >
               BD
             </div>
             <div className="flex flex-col">
               <span className={cn('font-bold text-base leading-none', theme.logoText)}>allEdu</span>
-              <span className={cn('mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-extrabold uppercase border tracking-wider', theme.badgeClass)}>
+              <span
+                className={cn(
+                  'mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-extrabold uppercase border tracking-wider',
+                  theme.badgeClass,
+                )}
+              >
                 {theme.badgeLabel}
               </span>
             </div>
@@ -175,7 +188,7 @@ export function Sidebar() {
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
                       'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200',
-                      isActive ? theme.activeLinkClass : theme.inactiveLinkClass
+                      isActive ? theme.activeLinkClass : theme.inactiveLinkClass,
                     )}
                   >
                     {item.icon}

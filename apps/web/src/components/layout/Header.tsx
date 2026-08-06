@@ -70,7 +70,7 @@ export function Header({ unreadCount = 0 }: HeaderProps) {
             👑 Admin
           </span>
         ) : user?.role === 'teacher' ? (
-          <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800 border border-emerald-300 shadow-sm">
+          <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-extrabold text-blue-800 border border-blue-300 shadow-sm">
             👨‍🏫 Teacher
           </span>
         ) : (
@@ -112,10 +112,7 @@ export function Header({ unreadCount = 0 }: HeaderProps) {
 
           {dropdownOpen && (
             <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setDropdownOpen(false)}
-              />
+              <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
               <div className="absolute right-0 z-20 mt-2 w-48 rounded-lg border bg-white py-1 shadow-lg">
                 <div className="border-b px-4 py-2">
                   <p className="text-sm font-medium text-gray-900 truncate">{user?.fullName}</p>
@@ -130,7 +127,11 @@ export function Header({ unreadCount = 0 }: HeaderProps) {
                   Profile
                 </Link>
                 <Link
-                  href={`/${user?.role ?? 'student'}/settings`}
+                  href={
+                    user?.role === 'student'
+                      ? '/student/profile/settings'
+                      : `/${user?.role ?? 'student'}/settings`
+                  }
                   onClick={() => setDropdownOpen(false)}
                   className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
