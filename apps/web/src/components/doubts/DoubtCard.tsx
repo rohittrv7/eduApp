@@ -119,11 +119,11 @@ export function DoubtCard({ doubt }: DoubtCardProps) {
           {doubt.replies.map((reply) => (
             <div key={reply.id} className="flex gap-2">
               <div className="flex-shrink-0 h-7 w-7 rounded-full bg-[#1a56db] flex items-center justify-center text-white text-xs font-bold">
-                {reply.author.fullName.charAt(0).toUpperCase()}
+                {(reply.author?.fullName ?? reply.author?.email ?? 'U').charAt(0).toUpperCase()}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-gray-800">{reply.author.fullName}</span>
+                  <span className="text-xs font-semibold text-gray-800">{reply.author?.fullName ?? reply.author?.email ?? 'User'}</span>
                   {(reply.author.role === 'teacher' || reply.author.role === 'admin') && (
                     <span className="rounded-full bg-[#1a56db] px-1.5 py-0.5 text-[10px] font-medium text-white capitalize">
                       {reply.author.role}

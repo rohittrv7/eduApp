@@ -203,7 +203,7 @@ class NavigationShellScaffold extends StatelessWidget {
     return 0; // Default dashboard
   }
 
-  void _onItemTapped(int index, BuildContext context, bool isAdmin) {
+  void _onItemTapped(int index, BuildContext context, bool isAdmin, String? role) {
     switch (index) {
       case 0:
         context.go('/');
@@ -213,14 +213,14 @@ class NavigationShellScaffold extends StatelessWidget {
         break;
       case 2:
         if (isAdmin) {
-          context.push('/admin/live-classes');
+          context.go('/admin/live-classes');
         } else {
           context.go('/live');
         }
         break;
       case 3:
         if (isAdmin) {
-          context.push('/admin/students');
+          context.go('/admin/students');
         } else {
           context.go('/doubts');
         }
@@ -261,7 +261,7 @@ class NavigationShellScaffold extends StatelessWidget {
           ),
           child: BottomNavigationBar(
             currentIndex: selectedIndex,
-            onTap: (index) => _onItemTapped(index, context, isAdmin),
+            onTap: (index) => _onItemTapped(index, context, isAdmin, userRole),
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.white,
             selectedItemColor: isAdmin ? const Color(0xFF7C3AED) : AppTheme.primary,

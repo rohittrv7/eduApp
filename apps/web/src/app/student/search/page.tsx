@@ -161,7 +161,7 @@ function SearchPageInner() {
                             className="h-full w-full rounded-full object-cover"
                           />
                         ) : (
-                          teacher.fullName.charAt(0)
+                          (teacher.fullName ?? teacher.email ?? 'T').charAt(0).toUpperCase()
                         )}
                       </div>
                       <div>

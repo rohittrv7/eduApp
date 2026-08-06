@@ -13,6 +13,14 @@ export const metadata: Metadata = {
   },
   description: 'Live and recorded classes for competitive exam preparation',
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
+    ],
+    apple: '/icons/icon-192.png',
+  },
 };
 
 export const viewport: Viewport = {

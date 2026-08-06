@@ -1,10 +1,33 @@
 'use client';
 
-import Image from 'next/image';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Star } from 'lucide-react';
 import { cn, formatINR } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
+
+/** Shows thumbnail image with graceful fallback to gradient + initial on error */
+function ThumbnailImage({ thumbnail, title }: { thumbnail: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 font-bold text-white text-xl">
+        {(title ?? '?').charAt(0).toUpperCase()}
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={thumbnail}
+      alt={title}
+      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 export interface BatchCardProps {
   id: string;
@@ -61,19 +84,10 @@ export function BatchCard({
       {/* Thumbnail */}
       <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
         {thumbnail && thumbnail.trim() !== '' ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumbnail}
-            alt={title}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            onError={(e) => {
-              // Hide image if fails to load and show gradient fallback
-              (e.target as HTMLElement).style.display = 'none';
-            }}
-          />
+          <ThumbnailImage thumbnail={thumbnail} title={title} />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 font-bold text-white text-xl">
-            {title.charAt(0).toUpperCase()}
+            {(title ?? '?').charAt(0).toUpperCase()}
           </div>
         )}
         {isEnrolled && (

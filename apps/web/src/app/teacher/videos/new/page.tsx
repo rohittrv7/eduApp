@@ -15,7 +15,7 @@ import {
 
 /** Validates YouTube video URL (Req 19.2) */
 const YOUTUBE_URL_REGEX =
-  /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)[\w-]{11}/;
+  /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|embed\/|shorts\/)[\w-]{11}|youtu\.be\/[\w-]{11})/;
 
 const schema = z.object({
   youtubeUrl: z

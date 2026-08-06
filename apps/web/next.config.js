@@ -19,7 +19,9 @@ const ContentSecurityPolicy = `
     https://img.youtube.com
     https://i.ytimg.com
     https://images.unsplash.com
-    https://www.gstatic.com/;
+    https://www.gstatic.com/
+    https://*.onrender.com
+    http://localhost:*;
   font-src 'self' https://www.gstatic.com/;
   frame-src 'self' blob:
     https://www.youtube.com
@@ -51,7 +53,7 @@ const ContentSecurityPolicy = `
   media-src 'self' blob:
     https://www.youtube.com
     https://www.youtube-nocookie.com;
-  worker-src 'self' blob:;
+  worker-src 'self' blob: https://unpkg.com;
   manifest-src 'self';
   object-src 'none';
   base-uri 'self';
@@ -78,6 +80,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'img.youtube.com' },
       { protocol: 'https', hostname: 'i.ytimg.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: '*.onrender.com' },
+      { protocol: 'http', hostname: 'localhost' },
     ],
   },
   async headers() {
@@ -89,16 +93,7 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    return [
-      { source: '/apk', destination: '/alledu-mobile.apk' },
-      { source: '/download-apk', destination: '/alledu-mobile.apk' },
-      { source: '/download/apk', destination: '/alledu-mobile.apk' },
-      { source: '/app-release.apk', destination: '/alledu-mobile.apk' },
-      { source: '/alledu.apk', destination: '/alledu-mobile.apk' },
-      { source: '/downloads/alledu.apk', destination: '/alledu-mobile.apk' },
-      { source: '/downloads/alledu-mobile.apk', destination: '/alledu-mobile.apk' },
-      { source: '/downloads/app-release.apk', destination: '/alledu-mobile.apk' },
-    ];
+    return [];
   },
 };
 
