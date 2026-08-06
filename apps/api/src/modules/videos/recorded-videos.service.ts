@@ -10,8 +10,18 @@ import { RecordedVideo } from './entities/recorded-video.entity';
 import { Enrollment } from '../batches/entities/enrollment.entity';
 import { CreateRecordedVideoDto } from './dto/create-recorded-video.dto';
 import { UpdateRecordedVideoDto } from './dto/update-recorded-video.dto';
-import { isValidYouTubeUrl } from '@educational/utils';
 import { LanguagePref } from '../users/entities/user.entity';
+
+/**
+ * Accepts all common YouTube URL formats:
+ * youtube.com/watch?v=ID, youtube.com/live/ID,
+ * youtube.com/embed/ID, youtube.com/shorts/ID, youtu.be/ID
+ */
+function isValidYouTubeUrl(url: string): boolean {
+  return /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|live\/|embed\/|shorts\/)[\w-]+|youtu\.be\/[\w-]+)/.test(
+    url,
+  );
+}
 
 function extractYouTubeVideoId(url: string): string {
   const match = url.match(
