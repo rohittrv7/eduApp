@@ -3,11 +3,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ClipboardList, Clock, Star, ChevronDown, ChevronUp, Play } from 'lucide-react';
+import {
+  ClipboardList,
+  Clock,
+  Star,
+  ChevronDown,
+  ChevronUp,
+  Play,
+  ChevronRight,
+} from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import apiClient from '@/../lib/api-client';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface TestItem {
   id: string;
@@ -26,97 +32,99 @@ interface TestSeries {
   tests: TestItem[];
 }
 
-// ─── SeriesCard ───────────────────────────────────────────────────────────────
-
 function SeriesCard({ series }: { series: TestSeries }) {
   const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
 
-  const enrollMutation = useMutation({
+  const enrollMut = useMutation({
     mutationFn: () => apiClient.post(`/test-series/${series.id}/enroll`).then((r) => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['test-series'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['test-series'] }),
   });
 
-  const handleEnroll = () => {
-    if (series.is_free) {
-      enrollMutation.mutate();
-    } else {
-      // Redirect to payment flow
-      window.location.href = `/student/payment?type=test-series&id=${series.id}`;
-    }
-  };
-
   return (
-    <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-      <div className="p-5">
+    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      {/* Card body */}
+      <div className="p-4">
+        {/* Subject tag */}
+        {series.subject && (
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[#1a56db]">
+            {series.subject}
+          </p>
+        )}
+
         <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 truncate">{series.title}</h3>
-            <p className="mt-1 text-sm text-gray-500">{series.subject}</p>
-            <p className="mt-1 text-xs text-gray-400">{series.tests.length} test{series.tests.length !== 1 ? 's' : ''}</p>
-          </div>
-          <div className="shrink-0 text-right">
-            {series.is_free ? (
-              <span className="inline-block rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
-                Free
-              </span>
-            ) : (
-              <span className="text-base font-bold text-gray-900">₹{series.price}</span>
-            )}
-          </div>
+          <h3 className="flex-1 text-[14px] font-bold text-gray-900 leading-snug">
+            {series.title}
+          </h3>
+          <span
+            className={`flex-shrink-0 rounded-xl px-2.5 py-1 text-[12px] font-extrabold ${
+              series.is_free ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-800'
+            }`}
+          >
+            {series.is_free ? 'Free' : `₹${series.price}`}
+          </span>
         </div>
 
-        <div className="mt-4 flex items-center gap-3">
+        <p className="mt-1 text-[11px] text-gray-400">
+          {series.tests.length} test{series.tests.length !== 1 ? 's' : ''}
+        </p>
+
+        {/* Actions */}
+        <div className="mt-3.5 flex items-center gap-2">
           {series.is_enrolled ? (
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="flex items-center gap-1.5 rounded-lg bg-[#1a56db] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#1a56db] py-2 text-[13px] font-bold text-white hover:bg-blue-700 transition-colors"
             >
               View Tests
-              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             </button>
           ) : (
             <button
-              onClick={handleEnroll}
-              disabled={enrollMutation.isPending}
-              className="rounded-lg bg-[#1a56db] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              onClick={() => {
+                if (series.is_free) {
+                  enrollMut.mutate();
+                } else {
+                  window.location.href = `/student/payment?type=test-series&id=${series.id}`;
+                }
+              }}
+              disabled={enrollMut.isPending}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#1a56db] py-2 text-[13px] font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {enrollMutation.isPending
-                ? 'Enrolling…'
-                : series.is_free
-                ? 'Enroll Free'
-                : 'Buy Now'}
+              {enrollMut.isPending ? 'Enrolling…' : series.is_free ? 'Enroll Free' : 'Buy Now'}
             </button>
           )}
-          {enrollMutation.isError && (
-            <p className="text-xs text-red-500">Failed to enroll. Try again.</p>
-          )}
         </div>
+        {enrollMut.isError && (
+          <p className="mt-1.5 text-center text-[11px] text-red-500">
+            Failed to enroll. Try again.
+          </p>
+        )}
       </div>
 
       {/* Expanded test list */}
       {series.is_enrolled && expanded && series.tests.length > 0 && (
-        <div className="border-t bg-gray-50 divide-y">
+        <div className="divide-y divide-gray-50 border-t border-gray-100 bg-gray-50/60">
           {series.tests.map((test) => (
-            <div key={test.id} className="flex items-center justify-between px-5 py-3 gap-3">
+            <div key={test.id} className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{test.title}</p>
-                <div className="mt-0.5 flex items-center gap-3 text-xs text-gray-500">
+                <p className="truncate text-[13px] font-semibold text-gray-900">{test.title}</p>
+                <div className="mt-0.5 flex items-center gap-3 text-[10px] text-gray-400">
                   <span className="flex items-center gap-1">
-                    <Clock size={11} /> {test.duration_mins} min
+                    <Clock size={10} />
+                    {test.duration_mins} min
                   </span>
                   <span className="flex items-center gap-1">
-                    <Star size={11} /> {test.total_marks} marks
+                    <Star size={10} />
+                    {test.total_marks} marks
                   </span>
                 </div>
               </div>
               <Link
                 href={`/student/tests/${test.id}`}
-                className="flex items-center gap-1.5 rounded-lg border border-[#1a56db] px-3 py-1.5 text-xs font-semibold text-[#1a56db] hover:bg-blue-50 shrink-0"
+                className="flex flex-shrink-0 items-center gap-1 rounded-xl border border-[#1a56db] px-3 py-1.5 text-[11px] font-bold text-[#1a56db] hover:bg-blue-50 transition-colors"
               >
-                <Play size={12} /> Start Test
+                <Play size={11} /> Start
               </Link>
             </div>
           ))}
@@ -126,44 +134,87 @@ function SeriesCard({ series }: { series: TestSeries }) {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 export default function TestSeriesPage() {
   const { data: seriesList, isLoading } = useQuery<TestSeries[]>({
     queryKey: ['test-series'],
     queryFn: () => apiClient.get('/test-series').then((r) => r.data),
   });
 
-  if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-36 animate-pulse rounded-xl bg-gray-200" />
-          ))}
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const enrolled = seriesList?.filter((s) => s.is_enrolled) ?? [];
+  const unenrolled = seriesList?.filter((s) => !s.is_enrolled) ?? [];
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-5">
+        {/* Header */}
         <div className="flex items-center gap-2">
-          <ClipboardList size={22} className="text-[#1a56db]" />
-          <h1 className="text-xl font-bold text-gray-900">Test Series</h1>
+          <ClipboardList size={20} className="text-[#1a56db]" />
+          <h1 className="text-[18px] font-bold text-gray-900">Test Series</h1>
         </div>
 
-        {!seriesList || seriesList.length === 0 ? (
-          <div className="rounded-xl border bg-white p-10 text-center text-gray-500">
-            No test series available yet.
+        {/* Summary */}
+        {!isLoading && seriesList && seriesList.length > 0 && (
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="rounded-2xl bg-blue-50 p-3 text-center">
+              <p className="text-[20px] font-extrabold text-[#1a56db]">{seriesList.length}</p>
+              <p className="text-[10px] font-semibold text-blue-500">Total Series</p>
+            </div>
+            <div className="rounded-2xl bg-green-50 p-3 text-center">
+              <p className="text-[20px] font-extrabold text-green-600">{enrolled.length}</p>
+              <p className="text-[10px] font-semibold text-green-500">Enrolled</p>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {seriesList.map((series) => (
-              <SeriesCard key={series.id} series={series} />
+        )}
+
+        {isLoading && (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-36 animate-pulse rounded-2xl bg-gray-100" />
             ))}
           </div>
+        )}
+
+        {!isLoading && (!seriesList || seriesList.length === 0) && (
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-gray-200 bg-white py-16 text-center">
+            <ClipboardList size={40} className="text-gray-200" />
+            <p className="text-sm font-medium text-gray-400">No test series available yet</p>
+          </div>
+        )}
+
+        {/* Enrolled */}
+        {!isLoading && enrolled.length > 0 && (
+          <section>
+            <div className="mb-2.5 flex items-center gap-1.5">
+              <ChevronRight size={14} className="text-green-500" />
+              <h2 className="text-[13px] font-bold text-gray-700">My Series</h2>
+              <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-600">
+                {enrolled.length}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {enrolled.map((s) => (
+                <SeriesCard key={s.id} series={s} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Explore */}
+        {!isLoading && unenrolled.length > 0 && (
+          <section>
+            <div className="mb-2.5 flex items-center gap-1.5">
+              <ChevronRight size={14} className="text-[#1a56db]" />
+              <h2 className="text-[13px] font-bold text-gray-700">Explore</h2>
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-[#1a56db]">
+                {unenrolled.length}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {unenrolled.map((s) => (
+                <SeriesCard key={s.id} series={s} />
+              ))}
+            </div>
+          </section>
         )}
       </div>
     </DashboardLayout>

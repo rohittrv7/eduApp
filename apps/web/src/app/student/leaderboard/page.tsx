@@ -4,21 +4,18 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 import { useAuthStore } from '@/stores/auth.store';
 import { useGetLeaderboardQuery } from '@/store/dashboardApi';
-import { Trophy, Medal } from 'lucide-react';
 
-const RANK_COLORS: Record<number, string> = {
-  1: 'text-yellow-500',
-  2: 'text-gray-400',
-  3: 'text-amber-600',
-};
+function RankBadge({ rank }: { rank: number }) {
+  if (rank === 1) return <span className="text-xl">🥇</span>;
+  if (rank === 2) return <span className="text-xl">🥈</span>;
+  if (rank === 3) return <span className="text-xl">🥉</span>;
+  return <span className="w-7 text-center text-[12px] font-bold text-gray-400">{rank}</span>;
+}
 
 export default function LeaderboardPage() {
   const { user } = useAuthStore();
-
-  // RTK Query — cached 5 min via keepUnusedDataFor (Req 7.2)
   const { data, isLoading } = useGetLeaderboardQuery();
 
-  // Top 10 entries (Req 7.1)
   const entries = (data?.entries ?? []).slice(0, 10);
   const myRank = data?.myRank;
   const myScore = data?.myScore;
@@ -26,87 +23,83 @@ export default function LeaderboardPage() {
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-          <Trophy size={20} className="text-yellow-500" />
-          Leaderboard
-        </h1>
+        {/* Header */}
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🏆</span>
+          <h1 className="text-[18px] font-bold text-gray-900">Leaderboard</h1>
+        </div>
 
-        {/* My rank card — always shown even if outside top 10 (Req 7.3) */}
+        {/* My rank card */}
         {myRank && (
-          <div className="rounded-xl border border-[#1a56db] bg-blue-50 p-4">
-            <p className="text-sm text-gray-600">Your Rank</p>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-[#1a56db]">#{myRank}</span>
-              {myScore !== null && myScore !== undefined && (
-                <span className="text-sm font-medium text-gray-700">{myScore} pts</span>
-              )}
+          <div className="flex items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1a56db] text-sm font-bold text-white shadow">
+              {(user?.fullName?.trim() || user?.email || 'U').charAt(0).toUpperCase()}
             </div>
+            <div className="flex-1">
+              <p className="text-[11px] text-gray-500">Your Rank</p>
+              <p className="text-[22px] font-extrabold leading-tight text-[#1a56db]">#{myRank}</p>
+            </div>
+            {myScore != null && (
+              <span className="rounded-xl bg-white px-3 py-1.5 text-[13px] font-bold text-gray-700 shadow-sm">
+                {myScore} pts
+              </span>
+            )}
           </div>
         )}
 
         {isLoading && <SkeletonLoader variant="list-item" count={10} />}
 
         {!isLoading && (
-          <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-            {entries.map((entry) => {
-              // Highlight current user's row (Req 7.3)
-              const isCurrentUser = entry.userId === user?.id || (user?.email && entry.fullName?.toLowerCase().includes(user.email.split('@')[0]?.toLowerCase()));
+          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            {entries.length === 0 && (
+              <p className="py-12 text-center text-sm text-gray-400">No entries yet</p>
+            )}
+            {entries.map((entry, idx) => {
+              const isMe = entry.userId === user?.id;
               return (
                 <div
                   key={entry.userId}
-                  className={`flex items-center gap-4 border-b px-4 py-3 last:border-b-0 ${
-                    isCurrentUser ? 'bg-blue-50' : ''
-                  }`}
+                  className={`flex items-center gap-3 border-b border-gray-50 px-4 py-3 last:border-b-0 ${isMe ? 'bg-blue-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
                 >
-                  {/* Rank with medal for top 3 */}
-                  <div className="w-8 text-center">
-                    {entry.rank <= 3 ? (
-                      <Medal
-                        size={20}
-                        className={RANK_COLORS[entry.rank] ?? 'text-gray-400'}
-                      />
-                    ) : (
-                      <span className="text-sm font-bold text-gray-500">{entry.rank}</span>
-                    )}
+                  <div className="flex w-8 justify-center">
+                    <RankBadge rank={entry.rank} />
                   </div>
 
-                  {/* Avatar — no mobile/email shown (Req 7.4) */}
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1a56db] text-sm font-bold text-white">
+                  {/* Avatar */}
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1a56db] text-[12px] font-bold text-white shadow-sm">
                     {entry.photo ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={entry.photo}
                         alt={entry.fullName}
-                        className="h-full w-full rounded-full object-cover"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
                       (entry.fullName?.trim() || 'S').charAt(0).toUpperCase()
                     )}
                   </div>
 
-                  {/* Display name only (Req 7.4) */}
-                  <span
-                    className={`flex-1 text-sm font-medium ${
-                      isCurrentUser ? 'font-bold text-[#1a56db]' : 'text-gray-900'
-                    }`}
-                  >
-                    {entry.fullName || 'Student'}
-                    {isCurrentUser && (
-                      <span className="ml-2 rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-bold text-[#1a56db]">
-                        (Me)
+                  <div className="flex flex-1 items-center gap-1.5 min-w-0">
+                    <span
+                      className={`truncate text-[13px] font-semibold ${isMe ? 'text-[#1a56db]' : 'text-gray-900'}`}
+                    >
+                      {entry.fullName || 'Student'}
+                    </span>
+                    {isMe && (
+                      <span className="flex-shrink-0 rounded-md bg-[#1a56db] px-1.5 py-0.5 text-[9px] font-bold text-white">
+                        Me
                       </span>
                     )}
-                  </span>
+                  </div>
 
-                  {/* Score */}
-                  <span className="text-sm font-bold text-gray-700">{entry.score} pts</span>
+                  <span
+                    className={`text-[13px] font-bold ${isMe ? 'text-[#1a56db]' : 'text-gray-700'}`}
+                  >
+                    {entry.score} pts
+                  </span>
                 </div>
               );
             })}
-
-            {entries.length === 0 && (
-              <p className="py-8 text-center text-gray-400">No entries yet</p>
-            )}
           </div>
         )}
       </div>
