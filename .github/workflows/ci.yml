@@ -12,48 +12,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  api:
-    name: API – Build & Test
+  ci:
+    name: Build & Test
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: pnpm/action-setup@v4
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
 
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: pnpm-${{ runner.os }}-
-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @educational/api build
-      - run: pnpm --filter @educational/api test
-        env:
-          NODE_ENV: test
-          JWT_ACCESS_SECRET: test-access-secret-32-chars-minimum
-          JWT_REFRESH_SECRET: test-refresh-secret-32-chars-minimum
-          JWT_ACCESS_EXPIRES_IN: 15m
-          JWT_REFRESH_EXPIRES_IN: 7d
-
-  web:
-    name: Web – Build & Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.0.0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -75,8 +45,23 @@ jobs:
             nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
             nextjs-${{ runner.os }}-
 
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @educational/web build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API
+        run: pnpm --filter @educational/api build
+
+      - name: Test API
+        run: pnpm --filter @educational/api test
+        env:
+          NODE_ENV: test
+          JWT_ACCESS_SECRET: test-access-secret-32-chars-minimum
+          JWT_REFRESH_SECRET: test-refresh-secret-32-chars-minimum
+          JWT_ACCESS_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+
+      - name: Build Web
+        run: pnpm --filter @educational/web build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
           NEXT_PUBLIC_SOCKET_URL: http://localhost:3001
@@ -91,4 +76,6 @@ jobs:
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '000000000000'
           NEXT_PUBLIC_FIREBASE_APP_ID: '1:000000000000:web:placeholder'
           NEXT_PUBLIC_FIREBASE_VAPID_KEY: placeholder
-      - run: pnpm --filter @educational/web test
+
+      - name: Test Web
+        run: pnpm --filter @educational/web test
