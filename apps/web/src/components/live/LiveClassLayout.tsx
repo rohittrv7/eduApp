@@ -314,18 +314,7 @@ export function LiveClassLayout({ liveClass, user }: LiveClassLayoutProps) {
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
-  // F key for fullscreen (desktop)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'f' || e.key === 'F') {
-        e.preventDefault();
-        handleFullscreen();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // F key — handled below with handleFullscreen dependency
 
   const handleUnmute = useCallback(() => {
     ytCmd(iframeRef.current, 'unMute');
@@ -360,26 +349,44 @@ export function LiveClassLayout({ liveClass, user }: LiveClassLayoutProps) {
     setShowSpeed(false);
   };
 
-  const handleFullscreen = () => {
+  const handleFullscreen = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
     if (!document.fullscreenElement) {
-      el.requestFullscreen?.();
-      // Request landscape on mobile
-      try {
-        (screen.orientation as any)?.lock?.('landscape');
-      } catch {
-        /* unsupported */
-      }
+      el.requestFullscreen?.()
+        .then(() => {
+          try {
+            (screen.orientation as any)?.lock?.('landscape').catch(() => {});
+          } catch {
+            /* Safari */
+          }
+        })
+        .catch(() => {});
     } else {
-      document.exitFullscreen?.();
-      try {
-        (screen.orientation as any)?.unlock?.();
-      } catch {
-        /* unsupported */
-      }
+      document
+        .exitFullscreen?.()
+        .then(() => {
+          try {
+            (screen.orientation as any)?.unlock?.();
+          } catch {
+            /* Safari */
+          }
+        })
+        .catch(() => {});
     }
-  };
+  }, []);
+
+  // F key — proper dependency on handleFullscreen
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        handleFullscreen();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handleFullscreen]);
 
   const showPlayer = (isActive || isEnded) && liveClass.youtubeVideoId;
   const scheduledDateValid =
