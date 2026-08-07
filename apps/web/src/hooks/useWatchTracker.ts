@@ -157,7 +157,8 @@ export function useWatchTracker({
     return () => clearInterval(interval);
   }, [flush]);
 
-  // Flush on unmount via sendBeacon for reliability
+  // Flush on unmount — use fetch with keepalive instead of sendBeacon
+  // (sendBeacon cannot set Authorization header)
   useEffect(() => {
     return () => {
       let total = accumulatedRef.current;
@@ -169,16 +170,26 @@ export function useWatchTracker({
       const payload = JSON.stringify({
         watchTimeSecs: total,
         watch_time_secs: total,
-        lastPosition,
-        last_position: lastPosition,
+        lastPosition: Math.floor(lastPosition),
+        last_position: Math.floor(lastPosition),
       });
       const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
       const url = `${base}/videos/${videoId}/watch-session`;
-      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-        navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
-      } else {
+      const token =
+        typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
+      // keepalive allows the request to outlive the page
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {
+        // If fetch fails on unmount, queue for next session
         enqueueOffline(total, lastPosition);
-      }
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);

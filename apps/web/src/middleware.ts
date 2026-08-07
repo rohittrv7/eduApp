@@ -26,7 +26,35 @@ function isTokenExpired(payload: Record<string, unknown>): boolean {
   return Date.now() / 1000 > exp;
 }
 
-export function middleware(request: NextRequest) {
+async function verifyJwtSignature(token: string): Promise<boolean> {
+  const secret = process.env.JWT_ACCESS_SECRET;
+  if (!secret) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const [headerB64, payloadB64, signatureB64] = parts;
+
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify'],
+    );
+
+    const sigBase64 = signatureB64.replace(/-/g, '+').replace(/_/g, '/');
+    const sigPadded = sigBase64.padEnd(sigBase64.length + ((4 - (sigBase64.length % 4)) % 4), '=');
+    const sigBytes = Uint8Array.from(atob(sigPadded), (c) => c.charCodeAt(0));
+
+    const dataBytes = encoder.encode(`${headerB64}.${payloadB64}`);
+    return await crypto.subtle.verify('HMAC', key, sigBytes, dataBytes);
+  } catch {
+    return false;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('access_token')?.value;
 
@@ -37,8 +65,9 @@ export function middleware(request: NextRequest) {
   if (isLoginPage) {
     // If valid token exists, redirect to dashboard
     if (token) {
+      const isValidSig = await verifyJwtSignature(token);
       const payload = decodeJwtPayload(token);
-      if (payload && !isTokenExpired(payload)) {
+      if (isValidSig && payload && !isTokenExpired(payload)) {
         const role = payload['role'] as string | undefined;
         const dashboard = (role && ROLE_DASHBOARDS[role]) || '/student/dashboard';
         return NextResponse.redirect(new URL(dashboard, request.url));
@@ -49,10 +78,11 @@ export function middleware(request: NextRequest) {
   }
 
   if (token) {
+    const isValidSig = await verifyJwtSignature(token);
     const payload = decodeJwtPayload(token);
 
-    // Expired token — treat as unauthenticated
-    if (!payload || isTokenExpired(payload)) {
+    // Invalid signature or expired token — treat as unauthenticated
+    if (!isValidSig || !payload || isTokenExpired(payload)) {
       if (isProtected) {
         // Use pathname directly — no encodeURIComponent to avoid double encoding
         const res = NextResponse.redirect(
@@ -83,16 +113,12 @@ export function middleware(request: NextRequest) {
   // No token — redirect protected routes to login
   if (isProtected) {
     // Use pathname directly — no encodeURIComponent to avoid double encoding
-    return NextResponse.redirect(
-      new URL(`/login?returnUrl=${pathname}`, request.url),
-    );
+    return NextResponse.redirect(new URL(`/login?returnUrl=${pathname}`, request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|api).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|api).*)'],
 };

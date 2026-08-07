@@ -28,7 +28,11 @@ export class TokenService {
     private readonly configService: ConfigService,
   ) {}
 
-  async issueTokens(user: User, res: Response, deviceInfo?: string): Promise<{ accessToken: string; refreshToken: string }> {
+  async issueTokens(
+    user: User,
+    res: Response,
+    deviceInfo?: string,
+  ): Promise<{ accessToken: string }> {
     // Single-device enforcement: increment session_version to invalidate prior access tokens
     user.session_version = (user.session_version || 0) + 1;
     await this.userRepository.save(user);
@@ -85,12 +89,18 @@ export class TokenService {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    return { accessToken, refreshToken: refreshTokenValue };
+    // Refresh token stays in HttpOnly cookie only — not returned in body (security fix)
+    return { accessToken };
   }
 
-  async refreshAccessToken(req: Request, res: Response, refreshTokenFromBody?: string): Promise<{ accessToken?: string; message: string }> {
+  async refreshAccessToken(
+    req: Request,
+    res: Response,
+    refreshTokenFromBody?: string,
+  ): Promise<{ accessToken?: string; message: string }> {
     // Accept token from body (cross-origin) or cookie (same-origin)
-    const refreshTokenValue = refreshTokenFromBody || (req.cookies?.['refresh_token'] as string | undefined);
+    const refreshTokenValue =
+      refreshTokenFromBody || (req.cookies?.['refresh_token'] as string | undefined);
     if (!refreshTokenValue) {
       throw new UnauthorizedException('No refresh token provided');
     }
@@ -127,7 +137,13 @@ export class TokenService {
     }
 
     const newAccessToken = this.jwtService.sign(
-      { sub: payload.sub, role: payload.role, mobile: payload.mobile, email: payload.email, session_version: payload.session_version },
+      {
+        sub: payload.sub,
+        role: payload.role,
+        mobile: payload.mobile,
+        email: payload.email,
+        session_version: payload.session_version,
+      },
       {
         secret: this.configService.get<string>('jwt.accessSecret'),
         expiresIn: this.configService.get<string>('jwt.accessExpiresIn') ?? '15m',

@@ -38,6 +38,12 @@ export class PlayTokenService {
     private readonly enrollmentRepo: Repository<Enrollment>,
   ) {}
 
+  private getJwtSecret(): string {
+    const secret = process.env['JWT_ACCESS_SECRET'];
+    if (!secret) throw new UnauthorizedException('JWT_ACCESS_SECRET configuration is missing');
+    return secret;
+  }
+
   /** Issue a play token for a recorded video */
   async issueVideoToken(videoId: string, userId: string, userRole: string) {
     const video = await this.videoRepo.findOne({ where: { id: videoId } });
@@ -55,7 +61,7 @@ export class PlayTokenService {
 
     const payload: PlayTokenPayload = { sub: userId, vid: videoId, type: 'video' };
     const token = this.jwtService.sign(payload, {
-      secret: process.env['JWT_ACCESS_SECRET'] ?? 'fallback-secret',
+      secret: this.getJwtSecret(),
       expiresIn: this.TTL_SECONDS,
     });
 
@@ -81,7 +87,7 @@ export class PlayTokenService {
 
     const payload: PlayTokenPayload = { sub: userId, vid: classId, type: 'live' };
     const token = this.jwtService.sign(payload, {
-      secret: process.env['JWT_ACCESS_SECRET'] ?? 'fallback-secret',
+      secret: this.getJwtSecret(),
       expiresIn: this.TTL_SECONDS,
     });
 
@@ -99,7 +105,7 @@ export class PlayTokenService {
     let payload: PlayTokenPayload;
     try {
       payload = this.jwtService.verify<PlayTokenPayload>(token, {
-        secret: process.env['JWT_ACCESS_SECRET'] ?? 'fallback-secret',
+        secret: this.getJwtSecret(),
       });
     } catch {
       throw new UnauthorizedException('Invalid or expired play token');

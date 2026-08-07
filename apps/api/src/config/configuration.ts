@@ -101,7 +101,7 @@ export default () => ({
   // 'gumlet'      → Gumlet streaming (future paid tier — encrypted offline download enabled)
   video: {
     provider: process.env['VIDEO_PROVIDER'] ?? 'youtube',
-    downloadTokenSecret: process.env['DOWNLOAD_TOKEN_SECRET'] ?? 'change_this_secret_32chars',
+    downloadTokenSecret: process.env['DOWNLOAD_TOKEN_SECRET'],
     gumlet: {
       apiKey: process.env['GUMLET_API_KEY'],
       collectionId: process.env['GUMLET_COLLECTION_ID'],

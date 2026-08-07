@@ -1,7 +1,7 @@
 import { Logger, Module, OnModuleInit } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
@@ -56,7 +56,8 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
         database: config.getOrThrow<string>('database.name'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
-        synchronize: process.env['NODE_ENV'] !== 'production' || process.env['DB_SYNCHRONIZE'] === 'true',
+        synchronize:
+          process.env['DB_SYNCHRONIZE'] === 'true' && process.env['NODE_ENV'] === 'development',
         poolSize: 15,
         ssl: { rejectUnauthorized: false },
         extra: {
@@ -90,6 +91,10 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
   controllers: [],
   providers: [
     JwtStrategy,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

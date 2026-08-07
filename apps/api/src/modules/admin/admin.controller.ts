@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -14,6 +15,26 @@ import { Response } from 'express';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { AdminService } from './admin.service';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { CreatePayoutDto } from './dto/create-payout.dto';
+
+/** Strip sensitive keys from settings before returning to client */
+const SENSITIVE_SETTINGS_KEYS = [
+  'smsApiKey',
+  'fcmServerKey',
+  'razorpayKeyId',
+  'razorpayWebhookSecret',
+  'razorpayKeySecret',
+  'imagekitPrivateKey',
+  'cloudinaryApiSecret',
+];
+function sanitizeSettings(settings: Record<string, any>): Record<string, any> {
+  const clean = { ...settings };
+  for (const key of SENSITIVE_SETTINGS_KEYS) {
+    if (key in clean) clean[key] = clean[key] ? '••••••••' : '';
+  }
+  return clean;
+}
 
 @Controller('admin')
 @Roles(UserRole.ADMIN)
@@ -47,10 +68,7 @@ export class AdminController {
   }
 
   @Get('students/export')
-  async exportStudentsCsv(
-    @Query('search') search?: string,
-    @Res() res?: Response,
-  ) {
+  async exportStudentsCsv(@Query('search') search?: string, @Res() res?: Response) {
     const csv = await this.adminService.exportStudentsCsv({ search });
     if (res) {
       res.setHeader('Content-Type', 'text/csv');
@@ -61,18 +79,12 @@ export class AdminController {
   }
 
   @Post('students/:id/ban')
-  banUser(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { reason: string },
-  ) {
+  banUser(@Param('id', ParseUUIDPipe) id: string, @Body() body: { reason: string }) {
     return this.adminService.banUser(id, body.reason);
   }
 
   @Post('users/:id/role')
-  changeUserRole(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { role: string },
-  ) {
+  changeUserRole(@Param('id', ParseUUIDPipe) id: string, @Body() body: { role: string }) {
     return this.adminService.changeUserRole(id, body.role);
   }
 
@@ -82,10 +94,7 @@ export class AdminController {
   }
 
   @Post('students/:id/warn')
-  warnUser(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { message: string },
-  ) {
+  warnUser(@Param('id', ParseUUIDPipe) id: string, @Body() body: { message: string }) {
     return this.adminService.warnUser(id, body.message);
   }
 
@@ -95,26 +104,25 @@ export class AdminController {
   }
 
   @Post('content/:type/:id/hide')
-  hideContent(
-    @Param('type') type: string,
-    @Param('id') id: string,
-  ) {
+  hideContent(@Param('type') type: string, @Param('id', ParseUUIDPipe) id: string) {
+    const allowed = ['video', 'note', 'announcement', 'doubt', 'live'];
+    if (!allowed.includes(type)) {
+      throw new BadRequestException(`Invalid content type: ${type}`);
+    }
     return this.adminService.hideContent(type, id);
   }
 
   @Delete('content/:type/:id')
-  deleteContent(
-    @Param('type') type: string,
-    @Param('id') id: string,
-  ) {
+  deleteContent(@Param('type') type: string, @Param('id', ParseUUIDPipe) id: string) {
+    const allowed = ['video', 'note', 'announcement', 'doubt', 'live'];
+    if (!allowed.includes(type)) {
+      throw new BadRequestException(`Invalid content type: ${type}`);
+    }
     return this.adminService.deleteContent(type, id);
   }
 
   @Get('teachers')
-  getTeachers(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  getTeachers(@Query('page') page?: string, @Query('limit') limit?: string) {
     return this.adminService.getTeachers({
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
@@ -127,11 +135,8 @@ export class AdminController {
   }
 
   @Post('teachers/:id/payout')
-  createPayout(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { amount: number },
-  ) {
-    return this.adminService.createPayout(id, body.amount);
+  createPayout(@Param('id', ParseUUIDPipe) id: string, @Body() body: CreatePayoutDto) {
+    return this.adminService.createPayout(id, Math.floor(body.amount));
   }
 
   @Post('enrollments')
@@ -145,13 +150,14 @@ export class AdminController {
   }
 
   @Get('settings')
-  getSettings() {
-    return this.adminService.getSettings();
+  async getSettings() {
+    const settings = (await this.adminService.getSettings()) as Record<string, any>;
+    return sanitizeSettings(settings);
   }
 
   @Patch('settings')
-  updateSettings(@Body() body: Record<string, any>) {
-    return this.adminService.updateSettings(body);
+  updateSettings(@Body() dto: UpdateSettingsDto) {
+    return this.adminService.updateSettings(dto as Record<string, any>);
   }
 
   @Post('maintenance')

@@ -125,12 +125,22 @@ export class PaymentsService {
   }
 
   async handleWebhook(payload: string, signature: string): Promise<void> {
+    if (!this.webhookSecret) {
+      throw new UnauthorizedException('Razorpay webhook secret is not configured');
+    }
+
     const expectedSig = crypto
       .createHmac('sha256', this.webhookSecret)
       .update(payload)
       .digest('hex');
 
-    if (expectedSig !== signature) {
+    const expectedBuf = Buffer.from(expectedSig);
+    const signatureBuf = Buffer.from(signature || '');
+
+    if (
+      expectedBuf.length !== signatureBuf.length ||
+      !crypto.timingSafeEqual(expectedBuf, signatureBuf)
+    ) {
       throw new UnauthorizedException('Invalid webhook signature');
     }
 
@@ -150,7 +160,11 @@ export class PaymentsService {
 
           // Enroll student
           if (transaction.batch_id) {
-            await this.enrollStudent(transaction.student_id, transaction.batch_id, transaction.coupon_id);
+            await this.enrollStudent(
+              transaction.student_id,
+              transaction.batch_id,
+              transaction.coupon_id,
+            );
           }
         }
       }
@@ -165,7 +179,11 @@ export class PaymentsService {
     }
   }
 
-  private async enrollStudent(studentId: string, batchId: string, couponId?: string | null): Promise<void> {
+  private async enrollStudent(
+    studentId: string,
+    batchId: string,
+    couponId?: string | null,
+  ): Promise<void> {
     const existing = await this.enrollmentRepo.findOne({
       where: { student_id: studentId, batch_id: batchId },
     });

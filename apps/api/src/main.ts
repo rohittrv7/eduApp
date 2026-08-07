@@ -29,17 +29,20 @@ async function bootstrap() {
     .split(',')
     .map((o) => o.trim().replace(/\/$/, '')); // strip trailing slash
 
+  const isProd = process.env['NODE_ENV'] === 'production';
+
   app.enableCors({
     origin: (origin, callback) => {
       // Allow requests with no origin (native mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
-      // Allow any localhost / 127.0.0.1 origins (Flutter web, Next.js dev server)
-      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      // Explicitly allowed origins check first
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      // Allow localhost / 127.0.0.1 origins only in non-production environments
+      if (!isProd && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
         return callback(null, true);
       }
-      // If allowedOrigins includes origin
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      callback(null, true); // Dev fallback to prevent CORS blocking
+      // Block all other origins — never allow unauthorized origins with credentials
+      callback(new Error(`CORS: origin '${origin}' not allowed`), false);
     },
     credentials: true,
   });

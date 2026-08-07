@@ -1,40 +1,56 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 import apiClient, { tokenStorage } from '@/../lib/api-client';
 
+/**
+ * Handles both:
+ *  - POST body form submission (new secure flow — tokens never in URL)
+ *  - GET query params (fallback for old links — immediately cleaned from URL)
+ */
 function GoogleSuccessInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/student/dashboard';
   const { setUser } = useAuthStore();
+  const processed = useRef(false);
 
   useEffect(() => {
-    // Extract tokens passed from backend via URL params
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
+    if (processed.current) return;
+    processed.current = true;
+
+    // Tokens come via POST body (hidden form) — read from sessionStorage staging area
+    // The form POST causes a page load; we read what the server embedded
+    // Fallback: still handle URL params (old clients) but strip immediately
+    const accessToken =
+      (typeof window !== 'undefined' && sessionStorage.getItem('_ga_token')) ||
+      searchParams.get('access_token');
+    const refreshToken =
+      (typeof window !== 'undefined' && sessionStorage.getItem('_gr_token')) ||
+      searchParams.get('refresh_token');
+    const redirect = searchParams.get('redirect') || '/student/dashboard';
+
+    // Clear URL params immediately to prevent tokens staying in history
+    if (searchParams.get('access_token') || searchParams.get('refresh_token')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('_ga_token');
+      sessionStorage.removeItem('_gr_token');
+    }
 
     if (accessToken) tokenStorage.setAccess(accessToken);
     if (refreshToken) tokenStorage.setRefresh(refreshToken);
 
-    // Clean tokens from URL immediately for security
-    if (accessToken || refreshToken) {
-      const cleanUrl = window.location.pathname + (redirect ? `?redirect=${encodeURIComponent(redirect)}` : '');
-      window.history.replaceState({}, '', cleanUrl);
-    }
-
-    const tokenToUse = accessToken || tokenStorage.getAccess();
-    if (!tokenToUse) {
+    const token = accessToken || tokenStorage.getAccess();
+    if (!token) {
       router.replace('/login?message=google_failed');
       return;
     }
 
     apiClient
-      .get('/users/me', {
-        headers: { Authorization: `Bearer ${tokenToUse}` },
-      })
+      .get('/users/me', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => {
         const u = r.data;
         setUser({
@@ -49,12 +65,12 @@ function GoogleSuccessInner() {
         });
         router.replace(redirect);
       })
-      .catch((err) => {
-        console.error('Google Auth /users/me error:', err);
+      .catch(() => {
         tokenStorage.clear();
         router.replace('/login?message=google_failed');
       });
-  }, [redirect, router, setUser, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex h-screen items-center justify-center bg-gray-900">
@@ -68,11 +84,13 @@ function GoogleSuccessInner() {
 
 export default function GoogleSuccessPage() {
   return (
-    <Suspense fallback={
-      <div className="flex h-screen items-center justify-center bg-gray-900">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center bg-gray-900">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+        </div>
+      }
+    >
       <GoogleSuccessInner />
     </Suspense>
   );

@@ -26,52 +26,42 @@ export class AuthService {
     dto: RegisterEmailDto,
     res: Response,
     deviceInfo?: string,
-  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
+  ): Promise<{ isNewUser: boolean; accessToken: string }> {
     const { user } = await this.usersService.registerEmail({
       email: dto.email,
       password: dto.password,
       full_name: dto.full_name,
       role: dto.role,
     });
-    const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
+    const { accessToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
     await this.usersService.updateStreak(user.id);
-    return { isNewUser: true, accessToken, refreshToken };
+    return { isNewUser: true, accessToken };
   }
 
   async login(
     dto: LoginEmailDto,
     res: Response,
     deviceInfo?: string,
-  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
+  ): Promise<{ isNewUser: boolean; accessToken: string }> {
     const user = await this.usersService.validateEmailPassword(dto.email, dto.password);
-    const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
+    const { accessToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
     await this.usersService.updateStreak(user.id);
-    return { isNewUser: !user.full_name, accessToken, refreshToken };
+    return { isNewUser: !user.full_name, accessToken };
   }
 
   async forgotPassword(email: string): Promise<void> {
+    // Always send same response regardless of whether email exists
+    // to prevent user enumeration attacks
     const user = await this.usersService.findByEmail(email);
-    if (!user) {
-      throw new BadRequestException('No account found with this email address');
+    if (user) {
+      // Only send OTP if user exists — silently skip otherwise
+      await this.otpService.sendPasswordResetOtp(email);
     }
-    await this.otpService.sendPasswordResetOtp(email);
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
     await this.otpService.verifyPasswordResetOtp(dto.email, dto.otp);
     await this.usersService.resetPassword(dto.email, dto.newPassword);
-  }
-
-  async setUserRole(email: string, role: 'student' | 'teacher' | 'admin'): Promise<any> {
-    let user = await this.usersService.findByEmail(email);
-    if (!user) {
-      // Create the user if they don't exist yet
-      const mobilePlaceholder = `admin_${Date.now()}`;
-      user = await this.usersService.createUser({ email, mobile: mobilePlaceholder, role: role as any });
-    } else {
-      user = await this.usersService.updateUser(user.id, { role: role as any });
-    }
-    return user;
   }
 
   async requestOtp(mobile: string): Promise<void> {
@@ -89,12 +79,12 @@ export class AuthService {
     otp: string,
     res: Response,
     deviceInfo?: string,
-  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
+  ): Promise<{ isNewUser: boolean; accessToken: string }> {
     await this.otpService.verifyEmailOtp(email, otp);
     const { user, isNewUser } = await this.usersService.findOrCreateByEmail(email);
-    const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
+    const { accessToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
     await this.usersService.updateStreak(user.id);
-    return { isNewUser: isNewUser || !user.full_name, accessToken, refreshToken };
+    return { isNewUser: isNewUser || !user.full_name, accessToken };
   }
 
   async verifyOtp(
@@ -118,19 +108,19 @@ export class AuthService {
     idToken: string,
     res: Response,
     deviceInfo?: string,
-  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
+  ): Promise<{ isNewUser: boolean; accessToken: string }> {
     const firebasePhone = await this.otpService.verifyFirebaseToken(idToken);
     const mobile = this.otpService.normalizePhoneNumber(firebasePhone);
     const { user, isNewUser } = await this.usersService.findOrCreateByMobile(mobile);
-    const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
+    const { accessToken } = await this.tokenService.issueTokens(user, res, deviceInfo);
     await this.usersService.updateStreak(user.id);
-    return { isNewUser, accessToken, refreshToken };
+    return { isNewUser, accessToken };
   }
 
   async handleGoogleCallback(
     profile: GoogleProfile,
     res: Response,
-  ): Promise<{ isNewUser: boolean; role: string; accessToken: string; refreshToken: string }> {
+  ): Promise<{ isNewUser: boolean; role: string; accessToken: string }> {
     // Try to find by google_id first, then by email
     let user = await this.usersService.findByGoogleId(profile.googleId);
     let wasCreated = false;
@@ -158,9 +148,9 @@ export class AuthService {
       wasCreated = true;
     }
 
-    const { accessToken, refreshToken } = await this.tokenService.issueTokens(user, res);
+    const { accessToken } = await this.tokenService.issueTokens(user, res);
     await this.usersService.updateStreak(user.id);
-    return { isNewUser: wasCreated, role: user.role, accessToken, refreshToken };
+    return { isNewUser: wasCreated, role: user.role, accessToken };
   }
 
   async linkMobileToGoogle(
@@ -187,7 +177,11 @@ export class AuthService {
     await this.tokenService.issueTokens(user, res);
   }
 
-  async refresh(req: Request, res: Response, refreshTokenFromBody?: string): Promise<{ accessToken?: string; message: string }> {
+  async refresh(
+    req: Request,
+    res: Response,
+    refreshTokenFromBody?: string,
+  ): Promise<{ accessToken?: string; message: string }> {
     return this.tokenService.refreshAccessToken(req, res, refreshTokenFromBody);
   }
 

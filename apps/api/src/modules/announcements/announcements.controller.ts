@@ -25,17 +25,19 @@ export class AnnouncementsController {
     return this.announcementsService.create(user.id, dto);
   }
 
+  /**
+   * GET /announcements?batchId=xxx
+   * Students can only see announcements for batches they are enrolled in.
+   * Teachers/admins can see all.
+   */
   @Get()
-  findAll(@Query('batchId') batchId?: string) {
-    return this.announcementsService.findAll(batchId);
+  findAll(@Query('batchId') batchId?: string, @CurrentUser() user?: any) {
+    return this.announcementsService.findAll(batchId, user?.id, user?.role);
   }
 
   @Post(':id/read')
   @HttpCode(HttpStatus.NO_CONTENT)
-  markRead(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: any,
-  ) {
+  markRead(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
     return this.announcementsService.markRead(id, user.id);
   }
 }

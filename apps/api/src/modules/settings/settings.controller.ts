@@ -2,6 +2,20 @@ import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { SettingsService } from './settings.service';
+import { UpdateSettingsDto } from '../admin/dto/update-settings.dto';
+
+const SENSITIVE_SETTINGS_KEYS = [
+  'smsApiKey',
+  'fcmServerKey',
+  'razorpayKeyId',
+  'razorpayWebhookSecret',
+  'razorpayKeySecret',
+  'imagekitPrivateKey',
+  'cloudinaryApiSecret',
+  'secret',
+  'password',
+  'key',
+];
 
 @Controller('admin/settings')
 @Roles(UserRole.ADMIN)
@@ -9,13 +23,21 @@ export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
-  getAll() {
-    return this.settingsService.getAll();
+  async getAll() {
+    const settings = await this.settingsService.getAll();
+    return settings.map((s) => ({
+      ...s,
+      value: SENSITIVE_SETTINGS_KEYS.some((k) => s.key.toLowerCase().includes(k.toLowerCase()))
+        ? s.value
+          ? '••••••••'
+          : ''
+        : s.value,
+    }));
   }
 
   @Patch()
-  update(@Body() body: Record<string, string>) {
-    return this.settingsService.update(body);
+  async update(@Body() dto: UpdateSettingsDto) {
+    return this.settingsService.update(dto as any);
   }
 }
 

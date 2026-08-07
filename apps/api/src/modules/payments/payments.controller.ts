@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -37,7 +38,10 @@ export class PaymentsController {
     @Req() req: RawBodyRequest<Request>,
     @Headers('x-razorpay-signature') signature: string,
   ) {
-    const payload = req.rawBody?.toString() ?? JSON.stringify(req.body);
+    if (!req.rawBody) {
+      throw new BadRequestException('Raw body is required for HMAC webhook verification');
+    }
+    const payload = req.rawBody.toString('utf-8');
     await this.paymentsService.handleWebhook(payload, signature);
     return { status: 'ok' };
   }

@@ -6,6 +6,7 @@ import { Enrollment } from '../batches/entities/enrollment.entity';
 import { TeacherPayout } from '../payments/entities/teacher-payout.entity';
 import { Batch } from '../batches/entities/batch.entity';
 import { LiveClass } from '../live-classes/entities/live-class.entity';
+import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 
@@ -18,6 +19,7 @@ import { AdminController } from './admin.controller';
       TeacherPayout,
       Batch,
       LiveClass,
+      RefreshToken,
     ]),
   ],
   controllers: [AdminController],

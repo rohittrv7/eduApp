@@ -7,6 +7,7 @@ import { Enrollment } from '../batches/entities/enrollment.entity';
 import { TeacherPayout, PayoutStatus } from '../payments/entities/teacher-payout.entity';
 import { Batch } from '../batches/entities/batch.entity';
 import { LiveClass, LiveClassStatus } from '../live-classes/entities/live-class.entity';
+import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { RedisService } from '../../common/redis/redis.service';
 
 const DASHBOARD_CACHE_KEY = 'admin:dashboard';
@@ -27,6 +28,8 @@ export class AdminService {
     private readonly batchRepo: Repository<Batch>,
     @InjectRepository(LiveClass)
     private readonly liveClassRepo: Repository<LiveClass>,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokenRepo: Repository<RefreshToken>,
     private readonly redisService: RedisService,
   ) {}
 
@@ -43,45 +46,65 @@ export class AdminService {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const [revToday, revWeek, revMonth, activeSubscriptions, enrollmentsToday, enrollmentsWeek, enrollmentsMonth, dailyRevRaw] =
-      await Promise.all([
-        this.transactionRepo
-          .createQueryBuilder('t')
-          .select('COALESCE(SUM(t.final_amount), 0)', 'total')
-          .where('t.status = :status AND t.created_at >= :dayAgo', { status: TransactionStatus.SUCCESS, dayAgo })
-          .getRawOne(),
-        this.transactionRepo
-          .createQueryBuilder('t')
-          .select('COALESCE(SUM(t.final_amount), 0)', 'total')
-          .where('t.status = :status AND t.created_at >= :weekAgo', { status: TransactionStatus.SUCCESS, weekAgo })
-          .getRawOne(),
-        this.transactionRepo
-          .createQueryBuilder('t')
-          .select('COALESCE(SUM(t.final_amount), 0)', 'total')
-          .where('t.status = :status AND t.created_at >= :monthAgo', { status: TransactionStatus.SUCCESS, monthAgo })
-          .getRawOne(),
-        this.enrollmentRepo.count({ where: { is_active: true } }),
-        this.enrollmentRepo
-          .createQueryBuilder('e')
-          .where('e.enrolled_at >= :dayAgo', { dayAgo })
-          .getCount(),
-        this.enrollmentRepo
-          .createQueryBuilder('e')
-          .where('e.enrolled_at >= :weekAgo', { weekAgo })
-          .getCount(),
-        this.enrollmentRepo
-          .createQueryBuilder('e')
-          .where('e.enrolled_at >= :monthAgo', { monthAgo })
-          .getCount(),
-        this.transactionRepo
-          .createQueryBuilder('t')
-          .select("TO_CHAR(t.created_at, 'YYYY-MM-DD')", 'date')
-          .addSelect('COALESCE(SUM(t.final_amount), 0)', 'amount')
-          .where('t.status = :status AND t.created_at >= :monthAgo', { status: TransactionStatus.SUCCESS, monthAgo })
-          .groupBy("TO_CHAR(t.created_at, 'YYYY-MM-DD')")
-          .orderBy("TO_CHAR(t.created_at, 'YYYY-MM-DD')", 'ASC')
-          .getRawMany(),
-      ]);
+    const [
+      revToday,
+      revWeek,
+      revMonth,
+      activeSubscriptions,
+      enrollmentsToday,
+      enrollmentsWeek,
+      enrollmentsMonth,
+      dailyRevRaw,
+    ] = await Promise.all([
+      this.transactionRepo
+        .createQueryBuilder('t')
+        .select('COALESCE(SUM(t.final_amount), 0)', 'total')
+        .where('t.status = :status AND t.created_at >= :dayAgo', {
+          status: TransactionStatus.SUCCESS,
+          dayAgo,
+        })
+        .getRawOne(),
+      this.transactionRepo
+        .createQueryBuilder('t')
+        .select('COALESCE(SUM(t.final_amount), 0)', 'total')
+        .where('t.status = :status AND t.created_at >= :weekAgo', {
+          status: TransactionStatus.SUCCESS,
+          weekAgo,
+        })
+        .getRawOne(),
+      this.transactionRepo
+        .createQueryBuilder('t')
+        .select('COALESCE(SUM(t.final_amount), 0)', 'total')
+        .where('t.status = :status AND t.created_at >= :monthAgo', {
+          status: TransactionStatus.SUCCESS,
+          monthAgo,
+        })
+        .getRawOne(),
+      this.enrollmentRepo.count({ where: { is_active: true } }),
+      this.enrollmentRepo
+        .createQueryBuilder('e')
+        .where('e.enrolled_at >= :dayAgo', { dayAgo })
+        .getCount(),
+      this.enrollmentRepo
+        .createQueryBuilder('e')
+        .where('e.enrolled_at >= :weekAgo', { weekAgo })
+        .getCount(),
+      this.enrollmentRepo
+        .createQueryBuilder('e')
+        .where('e.enrolled_at >= :monthAgo', { monthAgo })
+        .getCount(),
+      this.transactionRepo
+        .createQueryBuilder('t')
+        .select("TO_CHAR(t.created_at, 'YYYY-MM-DD')", 'date')
+        .addSelect('COALESCE(SUM(t.final_amount), 0)', 'amount')
+        .where('t.status = :status AND t.created_at >= :monthAgo', {
+          status: TransactionStatus.SUCCESS,
+          monthAgo,
+        })
+        .groupBy("TO_CHAR(t.created_at, 'YYYY-MM-DD')")
+        .orderBy("TO_CHAR(t.created_at, 'YYYY-MM-DD')", 'ASC')
+        .getRawMany(),
+    ]);
 
     const dashboard = {
       revenue: {
@@ -95,7 +118,10 @@ export class AdminService {
         week: enrollmentsWeek,
         month: enrollmentsMonth,
       },
-      dailyRevenue: (dailyRevRaw ?? []).map((r: any) => ({ date: r.date, amount: Number(r.amount) })),
+      dailyRevenue: (dailyRevRaw ?? []).map((r: any) => ({
+        date: r.date,
+        amount: Number(r.amount),
+      })),
     };
 
     try {
@@ -119,23 +145,28 @@ export class AdminService {
     const limit = filters?.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    let query = this.userRepo
-      .createQueryBuilder('u')
-      .where('u.role = :role', { role: 'student' });
+    let query = this.userRepo.createQueryBuilder('u').where('u.role = :role', { role: 'student' });
 
     if (filters?.search) {
-      query = query.andWhere('(u.full_name ILIKE :search OR u.mobile ILIKE :search OR u.email ILIKE :search)', {
-        search: `%${filters.search}%`,
-      });
+      query = query.andWhere(
+        '(u.full_name ILIKE :search OR u.mobile ILIKE :search OR u.email ILIKE :search)',
+        {
+          search: `%${filters.search}%`,
+        },
+      );
     }
     if (filters?.skillLevel) {
       query = query.andWhere('u.skill_level = :skillLevel', { skillLevel: filters.skillLevel });
     }
     if (filters?.lastActiveFrom) {
-      query = query.andWhere('u.last_active >= :lastActiveFrom', { lastActiveFrom: new Date(filters.lastActiveFrom) });
+      query = query.andWhere('u.last_active >= :lastActiveFrom', {
+        lastActiveFrom: new Date(filters.lastActiveFrom),
+      });
     }
     if (filters?.lastActiveTo) {
-      query = query.andWhere('u.last_active <= :lastActiveTo', { lastActiveTo: new Date(filters.lastActiveTo) });
+      query = query.andWhere('u.last_active <= :lastActiveTo', {
+        lastActiveTo: new Date(filters.lastActiveTo),
+      });
     }
 
     const [users, total] = await query
@@ -156,7 +187,9 @@ export class AdminService {
         .where('e.student_id IN (:...userIds)', { userIds })
         .groupBy('e.student_id')
         .getRawMany();
-      counts.forEach((c: any) => { enrollmentCounts[c.userId] = Number(c.count); });
+      counts.forEach((c: any) => {
+        enrollmentCounts[c.userId] = Number(c.count);
+      });
     }
 
     const students = users.map((u) => ({
@@ -176,12 +209,20 @@ export class AdminService {
   }
 
   async exportStudentsCsv(filters?: { search?: string }): Promise<string> {
-    const result = await this.getStudents(filters) as any;
+    const result = (await this.getStudents(filters)) as any;
     const students = result.students ?? [];
-    const headers = ['id', 'fullName', 'mobile', 'email', 'skillLevel', 'lastActive', 'quizScore', 'enrollmentCount', 'isBanned'];
-    const rows = students.map((s: any) =>
-      headers.map((h) => JSON.stringify(s[h] ?? '')).join(','),
-    );
+    const headers = [
+      'id',
+      'fullName',
+      'mobile',
+      'email',
+      'skillLevel',
+      'lastActive',
+      'quizScore',
+      'enrollmentCount',
+      'isBanned',
+    ];
+    const rows = students.map((s: any) => headers.map((h) => JSON.stringify(s[h] ?? '')).join(','));
     return [headers.join(','), ...rows].join('\n');
   }
 
@@ -210,7 +251,9 @@ export class AdminService {
         .where('b.teacher_id IN (:...teacherIds)', { teacherIds })
         .groupBy('b.teacher_id')
         .getRawMany();
-      counts.forEach((c: any) => { batchCounts[c.teacherId] = Number(c.count); });
+      counts.forEach((c: any) => {
+        batchCounts[c.teacherId] = Number(c.count);
+      });
     }
 
     const teachers = users.map((u) => ({
@@ -240,7 +283,12 @@ export class AdminService {
     if (!user) throw new NotFoundException(`User ${userId} not found`);
     user.is_banned = true;
     user.ban_reason = reason;
-    return this.userRepo.save(user);
+    // Increment session_version to invalidate all existing JWTs immediately
+    user.session_version = (user.session_version || 0) + 1;
+    const saved = await this.userRepo.save(user);
+    // Revoke all refresh tokens
+    await this.refreshTokenRepo.update({ user_id: userId, revoked: false }, { revoked: true });
+    return saved;
   }
 
   async unbanUser(userId: string): Promise<User> {
@@ -254,22 +302,67 @@ export class AdminService {
   async warnUser(userId: string, message: string): Promise<void> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
-    // In-app notification would be sent via NotificationsService
-    // Kept minimal to avoid circular dependency
+    user.ban_reason = `[WARNING]: ${message}`;
+    await this.userRepo.save(user);
   }
 
   async invalidateSessions(userId: string): Promise<void> {
-    // Revoke all refresh tokens - handled by auth module
-    // This is a placeholder; actual implementation would call AuthService
+    // Increment session_version safely with COALESCE → all existing JWTs become invalid immediately
+    await this.userRepo
+      .createQueryBuilder()
+      .update(User)
+      .set({ session_version: () => 'COALESCE(session_version, 0) + 1' })
+      .where('id = :id', { id: userId })
+      .execute();
+    // Also revoke all refresh tokens in DB
+    await this.refreshTokenRepo.update({ user_id: userId, revoked: false }, { revoked: true });
   }
 
-  async hideContent(type: string, id: string): Promise<void> {
-    // Generic content hiding - would dispatch to appropriate repo
-    // Actual implementation depends on content type
+  async hideContent(type: string, id: string): Promise<{ message: string }> {
+    if (type === 'live') {
+      const live = await this.liveClassRepo.findOne({ where: { id } });
+      if (!live) throw new NotFoundException(`Live class ${id} not found`);
+      live.status = LiveClassStatus.REJECTED;
+      await this.liveClassRepo.save(live);
+    } else {
+      // General repository soft-disable/hide
+      const targetRepo =
+        type === 'video'
+          ? 'recorded_videos'
+          : type === 'note'
+            ? 'notes'
+            : type === 'announcement'
+              ? 'announcements'
+              : 'doubts';
+      await this.userRepo
+        .query(`UPDATE ${targetRepo} SET is_active = false WHERE id = $1`, [id])
+        .catch(() => {
+          throw new NotFoundException(
+            `Content ${id} of type ${type} not found or cannot be hidden`,
+          );
+        });
+    }
+    return { message: `Content ${id} of type ${type} has been hidden` };
   }
 
-  async deleteContent(type: string, id: string): Promise<void> {
-    // Generic content deletion
+  async deleteContent(type: string, id: string): Promise<{ message: string }> {
+    if (type === 'live') {
+      const res = await this.liveClassRepo.delete(id);
+      if (!res.affected) throw new NotFoundException(`Live class ${id} not found`);
+    } else {
+      const targetTable =
+        type === 'video'
+          ? 'recorded_videos'
+          : type === 'note'
+            ? 'notes'
+            : type === 'announcement'
+              ? 'announcements'
+              : 'doubts';
+      await this.userRepo.query(`DELETE FROM ${targetTable} WHERE id = $1`, [id]).catch(() => {
+        throw new NotFoundException(`Content ${id} of type ${type} not found or cannot be deleted`);
+      });
+    }
+    return { message: `Content ${id} of type ${type} has been deleted` };
   }
 
   async getTeacherEarnings(teacherId: string): Promise<object> {
@@ -393,7 +486,7 @@ export class AdminService {
   }
 
   async updateSettings(patch: Record<string, any>): Promise<object> {
-    const current = await this.getSettings() as Record<string, any>;
+    const current = (await this.getSettings()) as Record<string, any>;
     const updated = { ...current, ...patch };
     this.settingsCache = updated; // always update in-memory
     try {
@@ -404,7 +497,11 @@ export class AdminService {
     return updated;
   }
 
-  async getFlaggedContent(params?: { type?: string; page?: number; limit?: number }): Promise<object> {
+  async getFlaggedContent(params?: {
+    type?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<object> {
     // Placeholder — real implementation would query chat_messages / doubts with flagged=true
     return { items: [], total: 0, page: params?.page ?? 1, limit: params?.limit ?? 20 };
   }

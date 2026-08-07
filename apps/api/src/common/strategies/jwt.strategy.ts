@@ -22,7 +22,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         },
       ]),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('jwt.accessSecret') ?? 'fallback-secret',
+      secretOrKey:
+        configService.get<string>('jwt.accessSecret') ||
+        (() => {
+          throw new Error('JWT_ACCESS_SECRET env var is required');
+        })(),
     });
   }
 
@@ -34,8 +38,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (user.is_banned) {
       throw new UnauthorizedException('User is banned');
     }
-    if (payload.session_version !== undefined && user.session_version !== payload.session_version) {
-      throw new UnauthorizedException('Session expired: logged in on another device');
+    if (payload.session_version === undefined || user.session_version !== payload.session_version) {
+      throw new UnauthorizedException(
+        'Session expired: logged in on another device or invalid session',
+      );
     }
     return user;
   }

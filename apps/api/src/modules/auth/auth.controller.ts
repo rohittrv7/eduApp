@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -38,32 +39,37 @@ export class AuthController {
     @Body() dto: RegisterEmailDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
+  ): Promise<{ isNewUser: boolean; accessToken: string }> {
     const deviceInfo = req.headers['user-agent'] ?? undefined;
     return this.authService.register(dto, res, deviceInfo);
   }
 
   @Public()
+  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 5 per min
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() dto: LoginEmailDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ isNewUser: boolean; accessToken: string; refreshToken: string }> {
+  ): Promise<{ isNewUser: boolean; accessToken: string }> {
     const deviceInfo = req.headers['user-agent'] ?? undefined;
     return this.authService.login(dto, res, deviceInfo);
   }
 
   @Public()
+  @Throttle({ default: { ttl: 900000, limit: 3 } }) // 3 per 15 min per IP
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ message: string }> {
     await this.authService.forgotPassword(dto.email);
-    return { message: 'Password reset OTP sent to your email' };
+    return {
+      message: 'If an account with that email exists, a password reset link/OTP has been sent.',
+    };
   }
 
   @Public()
+  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 5 per min
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
@@ -72,19 +78,7 @@ export class AuthController {
   }
 
   @Public()
-  @Post('bootstrap')
-  @HttpCode(HttpStatus.OK)
-  async bootstrap(
-    @Body() body: { secret: string; email: string; role?: string },
-  ): Promise<{ message: string }> {
-    const bootstrapSecret = process.env['BOOTSTRAP_SECRET'];
-    if (!bootstrapSecret || body.secret !== bootstrapSecret) {
-      throw new Error('Unauthorized');
-    }
-    const user = await this.authService.setUserRole(body.email, (body.role as any) || 'admin');
-    return { message: `User ${user.email} is now ${user.role}` };
-  }
-  @Public()
+  @Throttle({ default: { ttl: 60000, limit: 3 } }) // 3 per min
   @Post('otp/request')
   @HttpCode(HttpStatus.OK)
   async requestOtp(@Body() dto: RequestOtpDto): Promise<{ message: string }> {
@@ -96,24 +90,26 @@ export class AuthController {
    * Email OTP — request (active when OTP_PROVIDER=email).
    */
   @Public()
+  @Throttle({ default: { ttl: 60000, limit: 3 } }) // 3 per min
   @Post('email/request-otp')
   @HttpCode(HttpStatus.OK)
   async requestEmailOtp(@Body() dto: RequestEmailOtpDto): Promise<{ message: string }> {
     await this.authService.requestEmailOtp(dto.email);
-    return { message: 'OTP sent to your email' };
+    return { message: 'If registered, OTP has been sent to your email.' };
   }
 
   /**
    * Email OTP — verify (active when OTP_PROVIDER=email).
    */
   @Public()
+  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 5 attempts per min
   @Post('email/verify-otp')
   @HttpCode(HttpStatus.OK)
   async verifyEmailOtp(
     @Body() dto: VerifyEmailOtpDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ isNewUser: boolean }> {
+  ): Promise<{ isNewUser: boolean; accessToken: string }> {
     const deviceInfo = req.headers['user-agent'] ?? undefined;
     return this.authService.verifyEmailOtp(dto.email, dto.otp, res, deviceInfo as string);
   }
@@ -145,9 +141,14 @@ export class AuthController {
     @Body() dto: VerifyFirebaseTokenDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ isNewUser: boolean }> {
+  ): Promise<{ isNewUser: boolean; accessToken: string }> {
     const deviceInfo = req.headers['user-agent'] ?? null;
-    return this.authService.verifyFirebaseToken(dto.idToken, res, deviceInfo as string);
+    const result = await this.authService.verifyFirebaseToken(
+      dto.idToken,
+      res,
+      deviceInfo as string,
+    );
+    return { isNewUser: result.isNewUser, accessToken: result.accessToken };
   }
 
   @Public()
@@ -194,10 +195,7 @@ export class AuthController {
   @Public()
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleCallback(
-    @Req() req: Request & { user: any },
-    @Res() res: Response,
-  ): Promise<void> {
+  async googleCallback(@Req() req: Request & { user: any }, @Res() res: Response): Promise<void> {
     const rawFrontendUrls = (process.env['FRONTEND_URL'] || 'http://localhost:3000')
       .split(',')
       .map((u) => u.trim().replace(/\/$/, ''));
@@ -208,19 +206,26 @@ export class AuthController {
       'http://localhost:3000';
     const result = await this.authService.handleGoogleCallback(req.user, res);
 
-    const dest = result.isNewUser ? 'onboarding'
-      : result.role === 'teacher' ? 'teacher/dashboard'
-      : result.role === 'admin' ? 'admin/dashboard'
-      : 'student/dashboard';
+    const dest = result.isNewUser
+      ? 'onboarding'
+      : result.role === 'teacher'
+        ? 'teacher/dashboard'
+        : result.role === 'admin'
+          ? 'admin/dashboard'
+          : 'student/dashboard';
 
-    // Redirect to frontend auth-success page with tokens in URL params
-    // (cross-origin cookie approach doesn't work between Render and Vercel)
-    const params = new URLSearchParams({
-      access_token: result.accessToken,
-      refresh_token: result.refreshToken,
-      redirect: `/${dest}`,
-    });
-    res.redirect(`${frontendUrl}/auth/google/success?${params.toString()}`);
+    // Post tokens via hidden form instead of URL params to avoid
+    // leaking tokens in browser history, server logs and referrer headers
+    const html = `<!DOCTYPE html><html><body>
+<form id="f" method="POST" action="${frontendUrl}/auth/google/success">
+  <input type="hidden" name="access_token" value="${result.accessToken}">
+  <input type="hidden" name="redirect" value="/${dest}">
+</form>
+<script>document.getElementById('f').submit();</script>
+</body></html>`;
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(html);
   }
 
   @Public()

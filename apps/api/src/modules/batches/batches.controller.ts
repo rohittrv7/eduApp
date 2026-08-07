@@ -33,16 +33,8 @@ export class BatchesController {
 
   @Get()
   @Public()
-  findAll(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('role') role?: string,
-    @CurrentUser() user?: any,
-  ) {
-    // Teacher requesting their own batches
-    if (role === 'teacher' && user?.id) {
-      return this.batchesService.findByTeacher(user.id);
-    }
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string, @CurrentUser() user?: any) {
+    // role param removed — teachers must use GET /batches/mine (authenticated)
     return this.batchesService.findAll(
       page ? parseInt(page, 10) : 1,
       limit ? parseInt(limit, 10) : 20,
@@ -92,10 +84,7 @@ export class BatchesController {
 
   @Post(':id/enroll')
   @Roles(UserRole.STUDENT)
-  enroll(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: any,
-  ) {
+  enroll(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
     return this.batchesService.enroll(user.id, id);
   }
 
