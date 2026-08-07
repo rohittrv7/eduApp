@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import apiClient from '../../lib/api-client';
 
-const FLUSH_INTERVAL_MS = 10_000;
+const FLUSH_INTERVAL_MS = 30_000; // flush every 30s
 const QUEUE_KEY_PREFIX = 'watch:queue:';
 
 interface QueueItem {
@@ -50,7 +50,7 @@ export function useWatchTracker({
       queue.push({ videoId, watchTimeSecs, lastPosition });
       localStorage.setItem(queueKey, JSON.stringify(queue));
     },
-    [queueKey, videoId]
+    [queueKey, videoId],
   );
 
   const drainQueue = useCallback(async () => {
@@ -102,7 +102,7 @@ export function useWatchTracker({
         enqueueOffline(watchTimeSecs, lastPosition);
       }
     },
-    [videoId, getPlayerTime, drainQueue, enqueueOffline]
+    [videoId, getPlayerTime, drainQueue, enqueueOffline],
   );
 
   const startTracking = useCallback(() => {
@@ -142,7 +142,7 @@ export function useWatchTracker({
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [isPlaying, startTracking, pauseTracking]);
 
-  // Periodic flush every 10 s
+  // Periodic flush — check every 10s, flush when 30s of watch time accumulated
   useEffect(() => {
     const interval = setInterval(() => {
       if (!isTrackingRef.current) return;
@@ -153,7 +153,7 @@ export function useWatchTracker({
       accumulatedRef.current = 0;
       watchStartRef.current = now;
       flush(total);
-    }, 3_000);
+    }, 10_000); // check every 10s
     return () => clearInterval(interval);
   }, [flush]);
 

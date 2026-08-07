@@ -20,17 +20,33 @@ export default function StudentLiveClassPage() {
 
     async function load() {
       try {
+        // 1. Fetch class metadata (youtube_url stripped by API for students)
         const res = await apiClient.get(`/live-classes/${classId}`);
         if (cancelled) return;
         const raw = res.data;
-        // Normalize fields
+
+        // 2. Get play token → resolve to youtubeVideoId (secure, server-verified)
+        let youtubeVideoId: string | undefined;
+        const status = raw.status;
+        if (status === 'active' || status === 'ended') {
+          try {
+            const tokenRes = await apiClient.post(`/live-classes/${classId}/play-token`);
+            const resolveRes = await apiClient.post(`/live-classes/${classId}/resolve-token`, {
+              token: tokenRes.data.token,
+            });
+            youtubeVideoId = resolveRes.data.youtubeVideoId;
+          } catch {
+            // Not enrolled or class not active — player will show waiting screen
+          }
+        }
+
         const data: LiveClassData = {
           id: raw.id,
           title: raw.title,
           batchTitle: raw.batch?.name ?? raw.batchTitle ?? '',
           status: raw.status,
           scheduledAt: raw.scheduled_at ?? raw.scheduledAt ?? '',
-          youtubeVideoId: raw.youtube_video_id ?? raw.youtubeVideoId,
+          youtubeVideoId,
         };
         setLiveClass(data);
       } catch {
@@ -41,7 +57,6 @@ export default function StudentLiveClassPage() {
     }
 
     load();
-    // Refresh every 30s to pick up status changes
     const interval = setInterval(load, 30000);
     return () => {
       cancelled = true;
@@ -61,7 +76,10 @@ export default function StudentLiveClassPage() {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-gray-900">
         <p className="text-gray-400">Live class not found or you are not enrolled.</p>
-        <button onClick={() => window.history.back()} className="rounded-lg bg-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-600">
+        <button
+          onClick={() => window.history.back()}
+          className="rounded-lg bg-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-600"
+        >
           Go Back
         </button>
       </div>

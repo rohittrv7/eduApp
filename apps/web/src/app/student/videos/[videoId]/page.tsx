@@ -37,17 +37,32 @@ export default function VideoPage() {
 
   const { data: video, isLoading } = useQuery<VideoDetail>({
     queryKey: ['video', videoId],
-    queryFn: () => apiClient.get(`/videos/${videoId}`).then((r) => {
-      const d = r.data;
+    queryFn: async () => {
+      // 1. Fetch metadata (youtube_url stripped for students)
+      const metaRes = await apiClient.get(`/videos/${videoId}`);
+      const d = metaRes.data;
+
+      // 2. Get play-token → resolve to youtubeVideoId
+      let youtubeVideoId = '';
+      try {
+        const tokenRes = await apiClient.post(`/videos/${videoId}/play-token`);
+        const resolveRes = await apiClient.post(`/videos/${videoId}/resolve-token`, {
+          token: tokenRes.data.token,
+        });
+        youtubeVideoId = resolveRes.data.youtubeVideoId ?? '';
+      } catch {
+        // Not enrolled — video will show unavailable
+      }
+
       return {
         ...d,
-        youtubeVideoId: d.youtubeVideoId ?? d.youtube_video_id ?? '',
+        youtubeVideoId,
         durationSeconds: d.durationSeconds ?? d.duration_seconds ?? 0,
         batchTitle: d.batchTitle ?? d.batch?.name,
         chapterTitle: d.chapterTitle ?? d.chapter?.name,
         thumbnailUrl: d.thumbnailUrl ?? d.thumbnail,
       };
-    }),
+    },
     enabled: !isOfflineMode,
   });
 
@@ -70,8 +85,11 @@ export default function VideoPage() {
           <span className="text-sm font-semibold text-white">Offline Playback</span>
         </div>
         <div className="flex-1 bg-black">
-          <OfflinePlayer videoId={videoId} downloadToken={offlineToken}
-            onExpired={() => sessionStorage.removeItem(`dl-token:${videoId}`)} />
+          <OfflinePlayer
+            videoId={videoId}
+            downloadToken={offlineToken}
+            onExpired={() => sessionStorage.removeItem(`dl-token:${videoId}`)}
+          />
         </div>
       </div>
     );
@@ -95,15 +113,19 @@ export default function VideoPage() {
 
   return (
     <div className="flex h-[100dvh] flex-col bg-gray-900">
-
       {/* Top bar */}
       <div className="flex shrink-0 items-center justify-between border-b border-gray-700 bg-gray-900 px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <button onClick={() => router.back()} className="shrink-0 p-1 text-gray-400 hover:text-white">
+          <button
+            onClick={() => router.back()}
+            className="shrink-0 p-1 text-gray-400 hover:text-white"
+          >
             <ArrowLeft size={18} />
           </button>
           <div className="min-w-0">
-            <h1 className="truncate text-sm font-semibold text-white leading-tight">{video.title}</h1>
+            <h1 className="truncate text-sm font-semibold text-white leading-tight">
+              {video.title}
+            </h1>
             {(video.batchTitle || video.chapterTitle) && (
               <p className="truncate text-xs text-gray-400">
                 {[video.batchTitle, video.chapterTitle].filter(Boolean).join(' › ')}
@@ -112,8 +134,10 @@ export default function VideoPage() {
           </div>
         </div>
         <DownloadButton
-          videoId={video.id} videoTitle={video.title}
-          thumbnailUrl={video.thumbnailUrl} durationSeconds={video.durationSeconds}
+          videoId={video.id}
+          videoTitle={video.title}
+          thumbnailUrl={video.thumbnailUrl}
+          durationSeconds={video.durationSeconds}
           enrollmentExpiresAt={video.enrollmentExpiresAt}
         />
       </div>
@@ -121,7 +145,6 @@ export default function VideoPage() {
       {/* Body — on mobile: player on top, notes below (scrollable)
                on desktop: player left 70%, notes right 30% */}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row overflow-hidden">
-
         {/* Player — full width on mobile, 70% on desktop */}
         <div className="w-full shrink-0 bg-black lg:flex lg:flex-1 lg:items-center lg:justify-center">
           {video.youtubeVideoId ? (

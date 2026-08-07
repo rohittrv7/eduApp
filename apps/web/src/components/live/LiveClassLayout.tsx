@@ -258,13 +258,13 @@ export function LiveClassLayout({ liveClass, user }: LiveClassLayoutProps) {
     return () => window.removeEventListener('message', onMessage);
   }, []);
 
-  // Poll iframe for time updates
+  // Poll iframe for time updates — 1s is smooth enough
   useEffect(() => {
     if (!iframeReady) return;
     timeIntervalRef.current = setInterval(() => {
       iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), '*');
       ytCmd(iframeRef.current, 'getDuration');
-    }, 500);
+    }, 1_000);
     return () => {
       if (timeIntervalRef.current) clearInterval(timeIntervalRef.current);
     };

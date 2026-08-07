@@ -14,14 +14,27 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { LiveClassesService } from './live-classes.service';
+import { PlayTokenService } from '../videos/play-token.service';
 import { CreateLiveClassDto } from './dto/create-live-class.dto';
 import { RejectLiveClassDto } from './dto/reject-live-class.dto';
 import { AttachRecordingDto } from './dto/attach-recording.dto';
 import { LiveClassStatus } from './entities/live-class.entity';
 
+/** Strip youtube_url from live class for students */
+function sanitizeLiveClass(cls: any, role?: string) {
+  if (!cls || role === 'teacher' || role === 'admin') return cls;
+  const { youtube_url, youtube_video_id, ...safe } = cls;
+  void youtube_url;
+  void youtube_video_id;
+  return safe;
+}
+
 @Controller('live-classes')
 export class LiveClassesController {
-  constructor(private readonly liveClassesService: LiveClassesService) {}
+  constructor(
+    private readonly liveClassesService: LiveClassesService,
+    private readonly playTokenService: PlayTokenService,
+  ) {}
 
   @Post()
   @Roles(UserRole.TEACHER, UserRole.ADMIN)
@@ -42,16 +55,34 @@ export class LiveClassesController {
   }
 
   @Get()
-  findAll(
-    @Query('batchId') batchId?: string,
-    @Query('status') status?: LiveClassStatus,
-  ) {
+  findAll(@Query('batchId') batchId?: string, @Query('status') status?: LiveClassStatus) {
     return this.liveClassesService.findAll(batchId, status);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.liveClassesService.findOne(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    const cls = await this.liveClassesService.findOne(id);
+    return sanitizeLiveClass(cls, user?.role);
+  }
+
+  /**
+   * POST /live-classes/:id/play-token
+   * Issues a 4-hour JWT for a live class. Enrollment verified.
+   */
+  @Post(':id/play-token')
+  @Roles(UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN)
+  issuePlayToken(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.playTokenService.issueLiveToken(id, user.id, user.role);
+  }
+
+  /**
+   * POST /live-classes/:id/resolve-token
+   * Validates token → returns { youtubeVideoId }. Never the full URL.
+   */
+  @Post(':id/resolve-token')
+  @Roles(UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN)
+  resolvePlayToken(@Body('token') token: string) {
+    return this.playTokenService.resolveToken(token, 'live');
   }
 
   @Patch(':id')
@@ -59,7 +90,8 @@ export class LiveClassesController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: any,
-    @Body() body: { scheduled_at?: string; title?: string; description?: string; youtube_url?: string },
+    @Body()
+    body: { scheduled_at?: string; title?: string; description?: string; youtube_url?: string },
   ) {
     return this.liveClassesService.updateLiveClass(id, user.id, user.role, body);
   }
@@ -72,10 +104,7 @@ export class LiveClassesController {
 
   @Post(':id/reject')
   @Roles(UserRole.ADMIN)
-  reject(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: RejectLiveClassDto,
-  ) {
+  reject(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RejectLiveClassDto) {
     return this.liveClassesService.reject(id, dto.reason);
   }
 
@@ -110,10 +139,7 @@ export class LiveClassesController {
 
   @Post(':id/recording')
   @Roles(UserRole.TEACHER, UserRole.ADMIN)
-  attachRecording(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: AttachRecordingDto,
-  ) {
+  attachRecording(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AttachRecordingDto) {
     return this.liveClassesService.attachRecording(id, dto.recording_url);
   }
 

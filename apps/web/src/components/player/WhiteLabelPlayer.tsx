@@ -272,6 +272,7 @@ export function WhiteLabelPlayer({
   const setPlayerCurrentTime = usePlayerStore((s) => s.setCurrentTime);
   const setPlayerIsPlaying = usePlayerStore((s) => s.setIsPlaying);
 
+  // Poll every 1s — local only, no server calls. Progress bar stays smooth.
   useEffect(() => {
     tickRef.current = setInterval(() => {
       if (!playerRef.current) return;
@@ -285,6 +286,7 @@ export function WhiteLabelPlayer({
         setPlayerIsPlaying(isPlaying);
         if (dur > 0) setDuration(dur);
         onTimeUpdate?.(ct, dur, isPlaying);
+        // Cover 5s before end to hide YouTube suggestions panel
         if (dur > 0 && ct > 0 && dur - ct <= 5 && isPlaying) {
           videoEndedRef.current = true;
           if (coverDivRef.current) coverDivRef.current.style.display = 'block';
@@ -292,7 +294,7 @@ export function WhiteLabelPlayer({
       } catch {
         /* not ready */
       }
-    }, 500);
+    }, 1_000); // 1s — smooth UI, low CPU vs 500ms
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
     };

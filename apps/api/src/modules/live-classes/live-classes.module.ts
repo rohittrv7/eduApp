@@ -6,13 +6,14 @@ import { Enrollment } from '../batches/entities/enrollment.entity';
 import { RecordedVideo } from '../videos/entities/recorded-video.entity';
 import { LiveClassesService } from './live-classes.service';
 import { LiveClassesController } from './live-classes.controller';
-
 import { NotificationsModule } from '../notifications/notifications.module';
+import { VideosModule } from '../videos/videos.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([LiveClass, Attendance, Enrollment, RecordedVideo]),
     NotificationsModule,
+    VideosModule, // provides PlayTokenService
   ],
   controllers: [LiveClassesController],
   providers: [LiveClassesService],
