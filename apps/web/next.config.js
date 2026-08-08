@@ -8,14 +8,11 @@ const imagekitEndpoint =
 // Derive websocket URL from socket URL
 const wsUrl = socketUrl.replace(/^http/, 'ws');
 
-// Fix 13+14: Remove unsafe-eval & unsafe-inline from script-src
-// Fix 14: Restrict connect-src to known domains only (no bare 'https:')
+// Next.js requires 'unsafe-inline' and 'unsafe-eval' for inline scripts and client hydration
 const cspParts = [
   "default-src 'self'",
-  // Next.js requires 'unsafe-inline' for styles; script nonces would need runtime injection
-  // unsafe-eval removed — if Next.js build breaks, add back only for dev
   [
-    "script-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     'https://www.youtube.com',
     'https://s.ytimg.com',
     'https://www.google.com/recaptcha/',
