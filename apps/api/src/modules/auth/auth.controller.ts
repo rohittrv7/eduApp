@@ -214,18 +214,8 @@ export class AuthController {
           ? 'admin/dashboard'
           : 'student/dashboard';
 
-    // Post tokens via hidden form instead of URL params to avoid
-    // leaking tokens in browser history, server logs and referrer headers
-    const html = `<!DOCTYPE html><html><body>
-<form id="f" method="POST" action="${frontendUrl}/auth/google/success">
-  <input type="hidden" name="access_token" value="${result.accessToken}">
-  <input type="hidden" name="redirect" value="/${dest}">
-</form>
-<script>document.getElementById('f').submit();</script>
-</body></html>`;
-    res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Cache-Control', 'no-store');
-    res.send(html);
+    const redirectUrl = `${frontendUrl}/auth/google/success?access_token=${encodeURIComponent(result.accessToken)}&redirect=/${encodeURIComponent(dest)}`;
+    res.redirect(redirectUrl);
   }
 
   @Public()
