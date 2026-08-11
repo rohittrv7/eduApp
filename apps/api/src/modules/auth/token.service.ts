@@ -136,13 +136,18 @@ export class TokenService {
       throw new UnauthorizedException('Refresh token expired');
     }
 
+    // Fetch current session_version from DB to ensure token stays valid
+    const currentUser = await this.userRepository.findOne({ where: { id: payload.sub } });
+    if (!currentUser) throw new UnauthorizedException('User not found');
+    if (currentUser.is_banned) throw new UnauthorizedException('User is banned');
+
     const newAccessToken = this.jwtService.sign(
       {
         sub: payload.sub,
         role: payload.role,
         mobile: payload.mobile,
         email: payload.email,
-        session_version: payload.session_version,
+        session_version: currentUser.session_version, // always use latest from DB
       },
       {
         secret: this.configService.get<string>('jwt.accessSecret'),

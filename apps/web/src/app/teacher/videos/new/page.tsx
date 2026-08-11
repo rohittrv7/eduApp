@@ -9,7 +9,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import {
   useCreateVideoMutation,
   useGetTeacherBatchesQuery,
-  useGetTeacherSubjectsQuery,
+  useGetTeacherBatchDetailQuery,
   useGetChaptersBySubjectQuery,
 } from '@/store/teacherApi';
 
@@ -33,28 +33,27 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-/**
- * Teacher video upload form.
- * - Fields: YouTube URL, title, description, thumbnail, batch, subject tag, chapter assignment
- * - Validates YouTube URL; shows descriptive error on invalid (Req 19.2)
- * - On submit: creates recorded video entry (Req 19.1)
- * Requirements: 19.1, 19.2
- */
 export default function NewVideoPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedBatchId = searchParams.get('batchId') ?? '';
   const [serverError, setServerError] = useState('');
+  const [selectedBatchId, setSelectedBatchId] = useState(preselectedBatchId);
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
 
   const { data: batchesRaw } = useGetTeacherBatchesQuery();
-  const { data: subjects = [] } = useGetTeacherSubjectsQuery();
+  // Fetch batch detail to get subjects specific to selected batch
+  const { data: batchDetail } = useGetTeacherBatchDetailQuery(selectedBatchId, {
+    skip: !selectedBatchId,
+  });
   const { data: chapters = [] } = useGetChaptersBySubjectQuery(selectedSubjectId, {
     skip: !selectedSubjectId,
   });
   const [createVideo, { isLoading }] = useCreateVideoMutation();
 
   const batches = Array.isArray(batchesRaw) ? batchesRaw : [];
+  // Subjects from selected batch only
+  const subjects = batchDetail?.subjects ?? [];
 
   const {
     register,
@@ -173,6 +172,13 @@ export default function NewVideoPage() {
             </label>
             <select
               {...register('batchId')}
+              onChange={(e) => {
+                setValue('batchId', e.target.value);
+                setValue('subjectId', '');
+                setValue('chapterId', '');
+                setSelectedBatchId(e.target.value);
+                setSelectedSubjectId('');
+              }}
               className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db]"
             >
               <option value="">Select a batch</option>

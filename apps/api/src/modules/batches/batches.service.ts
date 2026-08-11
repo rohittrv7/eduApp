@@ -118,9 +118,9 @@ export class BatchesService {
     }
 
     // Load only chapters that have videos or live classes in this batch
-    const chapterIdsWithVideos = [...new Set(
-      videos.filter(v => v.chapter_id).map(v => v.chapter_id!)
-    )];
+    const chapterIdsWithVideos = [
+      ...new Set(videos.filter((v) => v.chapter_id).map((v) => v.chapter_id!)),
+    ];
 
     // Pre-load ended live classes once (reuse below)
     const endedLiveClasses = await this.liveClassRepo.find({
@@ -128,26 +128,28 @@ export class BatchesService {
       order: { scheduled_at: 'DESC' },
     });
     const liveChapterIds = endedLiveClasses
-      .filter(lc => lc.chapter_id)
-      .map(lc => lc.chapter_id!);
+      .filter((lc) => lc.chapter_id)
+      .map((lc) => lc.chapter_id!);
 
     const allRelevantChapterIds = [...new Set([...chapterIdsWithVideos, ...liveChapterIds])];
 
-    const allChapters = allRelevantChapterIds.length > 0
-      ? await this.chapterRepo.find({
-          where: { id: In(allRelevantChapterIds) },
-          order: { order_index: 'ASC', created_at: 'ASC' },
-        })
-      : [];
+    const allChapters =
+      allRelevantChapterIds.length > 0
+        ? await this.chapterRepo.find({
+            where: { id: In(allRelevantChapterIds) },
+            order: { order_index: 'ASC', created_at: 'ASC' },
+          })
+        : [];
 
     // Load only subjects that have relevant chapters
-    const subjectIdsWithContent = [...new Set(allChapters.map(c => c.subject_id))];
-    const allSubjects = subjectIdsWithContent.length > 0
-      ? await this.subjectRepo.find({
-          where: { id: In(subjectIdsWithContent) },
-          order: { created_at: 'ASC' },
-        })
-      : [];
+    const subjectIdsWithContent = [...new Set(allChapters.map((c) => c.subject_id))];
+    const allSubjects =
+      subjectIdsWithContent.length > 0
+        ? await this.subjectRepo.find({
+            where: { id: In(subjectIdsWithContent) },
+            order: { created_at: 'ASC' },
+          })
+        : [];
 
     // Build subject → chapters → videos tree
     const subjectMap = new Map<string, any>();
@@ -166,7 +168,7 @@ export class BatchesService {
         id: c.id,
         name: c.name,
         order: c.order_index,
-        videos: chapterVideos.map(v => ({
+        videos: chapterVideos.map((v) => ({
           id: v.id,
           title: v.title,
           thumbnail: v.thumbnail,
@@ -178,7 +180,7 @@ export class BatchesService {
       if (subj) subj.chapters.push(chapterData);
     }
 
-    const subjects: any[] = [...subjectMap.values()].map(s => ({
+    const subjects: any[] = [...subjectMap.values()].map((s) => ({
       ...s,
       chapters: s.chapters.sort((a: any, b: any) => a.order - b.order),
     }));
@@ -186,7 +188,7 @@ export class BatchesService {
     // Videos without chapter — put in a default "General" subject
     const uncategorizedVideos = videosByChapter.get(null) ?? [];
     // Also videos whose chapter_id doesn't match any loaded chapter
-    const loadedChapterIds = new Set(allChapters.map(c => c.id));
+    const loadedChapterIds = new Set(allChapters.map((c) => c.id));
     for (const [chapId, vids] of videosByChapter) {
       if (chapId !== null && !loadedChapterIds.has(chapId)) {
         uncategorizedVideos.push(...vids);
@@ -194,20 +196,22 @@ export class BatchesService {
     }
     if (uncategorizedVideos.length > 0) {
       subjects.push({
-        id: 'uncategorized',
+        id: '__uncategorized__', // clearly synthetic — never used as UUID
         name: 'General',
-        chapters: [{
-          id: 'uncategorized-chapter',
-          name: 'Videos',
-          order: 0,
-          videos: uncategorizedVideos.map(v => ({
-            id: v.id,
-            title: v.title,
-            thumbnail: v.thumbnail,
-            durationSeconds: v.duration_seconds,
-            isLocked: v.is_locked,
-          })),
-        }],
+        chapters: [
+          {
+            id: '__uncategorized_chapter__',
+            name: 'Videos',
+            order: 0,
+            videos: uncategorizedVideos.map((v) => ({
+              id: v.id,
+              title: v.title,
+              thumbnail: v.thumbnail,
+              durationSeconds: v.duration_seconds,
+              isLocked: v.is_locked,
+            })),
+          },
+        ],
       });
     }
 
@@ -227,9 +231,13 @@ export class BatchesService {
           const cls = liveByChapterId.get(chapter.id) ?? [];
           for (const lc of cls) {
             chapter.videos.push({
-              id: lc.id, title: lc.title, thumbnail: null,
-              durationSeconds: 0, isLocked: false,
-              isLiveRecording: true, youtubeVideoId: lc.youtube_video_id,
+              id: lc.id,
+              title: lc.title,
+              thumbnail: null,
+              durationSeconds: 0,
+              isLocked: false,
+              isLiveRecording: true,
+              youtubeVideoId: lc.youtube_video_id,
             });
           }
           if (cls.length) liveByChapterId.delete(chapter.id);
@@ -241,26 +249,31 @@ export class BatchesService {
       if (nullClasses.length > 0) {
         for (const lc of nullClasses) {
           const liveVideo = {
-            id: lc.id, title: lc.title, thumbnail: null,
-            durationSeconds: 0, isLocked: false,
-            isLiveRecording: true, youtubeVideoId: lc.youtube_video_id,
+            id: lc.id,
+            title: lc.title,
+            thumbnail: null,
+            durationSeconds: 0,
+            isLocked: false,
+            isLiveRecording: true,
+            youtubeVideoId: lc.youtube_video_id,
           };
 
           // Try to match by subject_id first
           const matchedSubject = (lc as any).subject_id
-            ? subjects.find(s => s.id === (lc as any).subject_id)
+            ? subjects.find((s) => s.id === (lc as any).subject_id)
             : null;
 
-          const targetSubject = matchedSubject
-            ?? subjects.find(s => s.id !== 'live-recordings' && s.id !== 'uncategorized')
-            ?? subjects[0];
+          const targetSubject =
+            matchedSubject ??
+            subjects.find((s) => s.id !== '__live_recordings__' && s.id !== '__uncategorized__') ??
+            subjects[0];
 
           if (targetSubject) {
             if (targetSubject.chapters.length > 0) {
               targetSubject.chapters[0].videos.push(liveVideo);
             } else {
               targetSubject.chapters.push({
-                id: `live-classes-chapter-${targetSubject.id}`,
+                id: `__live_ch_${targetSubject.id}__`,
                 name: 'Live Classes',
                 order: 0,
                 videos: [liveVideo],
@@ -268,9 +281,15 @@ export class BatchesService {
             }
           } else {
             // No subjects — create Live Recordings
-            let liveRec = subjects.find(s => s.id === 'live-recordings');
+            let liveRec = subjects.find((s) => s.id === '__live_recordings__');
             if (!liveRec) {
-              liveRec = { id: 'live-recordings', name: 'Live Recordings', chapters: [{ id: 'live-recordings-chapter', name: 'Recorded Classes', order: 0, videos: [] }] };
+              liveRec = {
+                id: '__live_recordings__',
+                name: 'Live Recordings',
+                chapters: [
+                  { id: '__live_recordings_ch__', name: 'Recorded Classes', order: 0, videos: [] },
+                ],
+              };
               subjects.push(liveRec);
             }
             liveRec.chapters[0].videos.push(liveVideo);
@@ -284,16 +303,24 @@ export class BatchesService {
       for (const [, cls] of liveByChapterId) remaining.push(...cls);
       if (remaining.length > 0) {
         subjects.push({
-          id: 'live-recordings',
+          id: '__live_recordings__',
           name: 'Live Recordings',
-          chapters: [{
-            id: 'live-recordings-chapter', name: 'Recorded Classes', order: 0,
-            videos: remaining.map(lc => ({
-              id: lc.id, title: lc.title, thumbnail: null,
-              durationSeconds: 0, isLocked: false,
-              isLiveRecording: true, youtubeVideoId: lc.youtube_video_id,
-            })),
-          }],
+          chapters: [
+            {
+              id: '__live_recordings_ch__',
+              name: 'Recorded Classes',
+              order: 0,
+              videos: remaining.map((lc) => ({
+                id: lc.id,
+                title: lc.title,
+                thumbnail: null,
+                durationSeconds: 0,
+                isLocked: false,
+                isLiveRecording: true,
+                youtubeVideoId: lc.youtube_video_id,
+              })),
+            },
+          ],
         });
       }
     }
@@ -332,7 +359,9 @@ export class BatchesService {
       where: { batch_id: id, is_active: true },
     });
     if (enrolledCount > 0) {
-      throw new BadRequestException('Cannot delete batch because students are already enrolled in it');
+      throw new BadRequestException(
+        'Cannot delete batch because students are already enrolled in it',
+      );
     }
     await this.batchRepo.remove(batch);
   }
@@ -358,9 +387,7 @@ export class BatchesService {
     const batch = await this.findOne(batchId);
 
     if (!batch.is_free) {
-      throw new BadRequestException(
-        'This batch requires payment. Use the payment flow to enroll.',
-      );
+      throw new BadRequestException('This batch requires payment. Use the payment flow to enroll.');
     }
 
     const existing = await this.enrollmentRepo.findOne({
@@ -383,9 +410,8 @@ export class BatchesService {
       student_id: studentId,
       batch_id: batchId,
       is_active: true,
-      expires_at: batch.trial_days > 0
-        ? new Date(Date.now() + batch.trial_days * 24 * 60 * 60 * 1000)
-        : null,
+      expires_at:
+        batch.trial_days > 0 ? new Date(Date.now() + batch.trial_days * 24 * 60 * 60 * 1000) : null,
     });
     return this.enrollmentRepo.save(enrollment);
   }
@@ -395,9 +421,7 @@ export class BatchesService {
       where: { student_id: studentId, is_active: true },
       relations: ['batch'],
     });
-    return enrollments
-      .map((e) => e.batch)
-      .filter((b) => b && b.is_active);
+    return enrollments.map((e) => e.batch).filter((b) => b && b.is_active);
   }
 
   async toggleFeatured(batchId: string): Promise<Batch> {

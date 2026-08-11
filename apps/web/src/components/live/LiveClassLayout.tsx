@@ -299,6 +299,8 @@ export function LiveClassLayout({ liveClass, user }: LiveClassLayoutProps) {
       if (d.classId === liveClass.id) {
         setIsActive(false);
         setIsEnded(true);
+        // Reload page after 3s so play-token can be fetched for recording
+        setTimeout(() => window.location.reload(), 3000);
       }
     });
     return () => {

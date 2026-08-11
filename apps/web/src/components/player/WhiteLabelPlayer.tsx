@@ -187,7 +187,10 @@ export function WhiteLabelPlayer({
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSpeed, setShowSpeed] = useState(false);
+  const [showQuality, setShowQuality] = useState(false);
   const [speed, setSpeed] = useState(1);
+  const [availableQualities, setAvailableQualities] = useState<string[]>([]);
+  const [currentQuality, setCurrentQuality] = useState('auto');
   const ctrlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showCoverBriefly = useCallback(() => {
@@ -239,6 +242,13 @@ export function WhiteLabelPlayer({
             const dur = e.target.getDuration();
             if (dur > 0) setDuration(dur);
             if (initialPosition > 0) e.target.seekTo(initialPosition, true);
+            // Fetch available quality levels
+            try {
+              const levels: string[] = e.target.getAvailableQualityLevels?.() ?? [];
+              if (levels.length > 0) setAvailableQualities(levels.filter((q) => q !== 'unknown'));
+            } catch {
+              /* not ready */
+            }
           },
           onStateChange: (e: any) => {
             if (destroyed) return;
@@ -392,6 +402,28 @@ export function WhiteLabelPlayer({
     setShowSpeed(false);
   };
 
+  const handleQuality = (q: string) => {
+    try {
+      playerRef.current?.setPlaybackQuality?.(q);
+    } catch {
+      /* deprecated but may still work */
+    }
+    setCurrentQuality(q);
+    setShowQuality(false);
+  };
+
+  const QUALITY_LABELS: Record<string, string> = {
+    hd2160: '4K',
+    hd1440: '1440p',
+    hd1080: '1080p',
+    hd720: '720p',
+    large: '480p',
+    medium: '360p',
+    small: '240p',
+    tiny: '144p',
+    auto: 'Auto',
+  };
+
   const progressPct = duration > 0 ? Math.min((currentTime / duration) * 100, 100) : 0;
 
   return (
@@ -531,7 +563,10 @@ export function WhiteLabelPlayer({
             {/* Speed */}
             <div className="relative">
               <button
-                onClick={() => setShowSpeed((v) => !v)}
+                onClick={() => {
+                  setShowSpeed((v) => !v);
+                  setShowQuality(false);
+                }}
                 className="text-xs font-semibold text-white/80 hover:text-white transition-colors"
               >
                 {speed}x
@@ -551,13 +586,37 @@ export function WhiteLabelPlayer({
               )}
             </div>
 
-            {/* Settings placeholder */}
-            <button
-              className="text-white/80 hover:text-white transition-colors"
-              aria-label="Settings"
-            >
-              <ISettings />
-            </button>
+            {/* Quality */}
+            {availableQualities.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowQuality((v) => !v);
+                    setShowSpeed(false);
+                  }}
+                  className="flex items-center gap-1 text-white/80 hover:text-white transition-colors"
+                  aria-label="Quality"
+                >
+                  <ISettings />
+                  <span className="text-xs hidden sm:inline">
+                    {QUALITY_LABELS[currentQuality] ?? currentQuality}
+                  </span>
+                </button>
+                {showQuality && (
+                  <div className="absolute bottom-8 right-0 z-[70] min-w-[80px] overflow-hidden rounded-xl border border-white/10 bg-black/95 py-1 shadow-2xl backdrop-blur-sm">
+                    {availableQualities.map((q) => (
+                      <button
+                        key={q}
+                        onClick={() => handleQuality(q)}
+                        className={`block w-full px-3 py-1.5 text-left text-xs transition-colors hover:bg-white/10 ${currentQuality === q ? 'font-bold text-blue-400' : 'text-white'}`}
+                      >
+                        {QUALITY_LABELS[q] ?? q}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Fullscreen */}
             <button
