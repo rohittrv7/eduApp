@@ -24,8 +24,10 @@ export const tokenStorage = {
     // Clear cookies with explicit past expiration
     document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
     document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-    document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=None; Secure';
-    document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=None; Secure';
+    document.cookie =
+      'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=None; Secure';
+    document.cookie =
+      'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=None; Secure';
   },
 };
 
@@ -74,7 +76,15 @@ if (process.env.NODE_ENV === 'development') {
           response.config.url ?? '',
           response.status,
           duration,
-          response.config.data ? (() => { try { return JSON.parse(response.config.data); } catch { return response.config.data; } })() : undefined,
+          response.config.data
+            ? (() => {
+                try {
+                  return JSON.parse(response.config.data);
+                } catch {
+                  return response.config.data;
+                }
+              })()
+            : undefined,
           response.data,
         );
       });
@@ -88,7 +98,15 @@ if (process.env.NODE_ENV === 'development') {
           error.config?.url ?? '',
           error.response?.status ?? 0,
           duration,
-          error.config?.data ? (() => { try { return JSON.parse(error.config!.data); } catch { return error.config?.data; } })() : undefined,
+          error.config?.data
+            ? (() => {
+                try {
+                  return JSON.parse(error.config!.data);
+                } catch {
+                  return error.config?.data;
+                }
+              })()
+            : undefined,
           error.response?.data,
         );
       });
@@ -140,8 +158,13 @@ apiClient.interceptors.response.use(
         );
 
         const newAccessToken = res.data?.accessToken as string;
+        const newRefreshToken = res.data?.refreshToken as string | undefined;
         if (newAccessToken) {
-          tokenStorage.setAccess(newAccessToken); // updates both localStorage + cookie
+          tokenStorage.setAccess(newAccessToken);
+        }
+        // Save refresh token if backend returns it (fallback for cross-origin)
+        if (newRefreshToken) {
+          tokenStorage.setRefresh(newRefreshToken);
         }
 
         processQueue(null);

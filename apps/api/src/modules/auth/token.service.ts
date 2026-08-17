@@ -32,13 +32,10 @@ export class TokenService {
     user: User,
     res: Response,
     deviceInfo?: string,
-  ): Promise<{ accessToken: string }> {
-    // Single-device enforcement: increment session_version to invalidate prior access tokens
-    user.session_version = (user.session_version || 0) + 1;
-    await this.userRepository.save(user);
-
-    // Revoke all existing refresh tokens
-    await this.revokeAllTokens(user.id);
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    // Do NOT increment session_version on every login — only increment on
+    // explicit invalidation (ban, admin action, logout-all).
+    // Incrementing on every login breaks multi-tab and hard-refresh flows.
 
     const payload: JwtPayload = {
       sub: user.id,
@@ -46,7 +43,7 @@ export class TokenService {
       mobile: user.mobile ?? null,
       email: user.email ?? null,
       full_name: user.full_name ?? undefined,
-      session_version: user.session_version,
+      session_version: user.session_version ?? 1,
     };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -79,18 +76,18 @@ export class TokenService {
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refresh_token', refreshTokenValue, {
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    // Refresh token stays in HttpOnly cookie only — not returned in body (security fix)
-    return { accessToken };
+    // Return both tokens in body for cross-origin clients (Vercel + Render)
+    return { accessToken, refreshToken: refreshTokenValue };
   }
 
   async refreshAccessToken(
@@ -163,6 +160,8 @@ export class TokenService {
       maxAge: 15 * 60 * 1000,
     });
 
+    // Return accessToken in body for cross-origin (Vercel+Render)
+    // refreshToken also returned so client can store it for next refresh
     return { accessToken: newAccessToken, message: 'Token refreshed' };
   }
 

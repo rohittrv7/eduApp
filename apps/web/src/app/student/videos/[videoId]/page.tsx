@@ -63,6 +63,8 @@ export default function VideoPage() {
         thumbnailUrl: d.thumbnailUrl ?? d.thumbnail,
       };
     },
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
     enabled: !isOfflineMode,
   });
 

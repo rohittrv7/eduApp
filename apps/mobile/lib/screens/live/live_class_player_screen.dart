@@ -281,7 +281,7 @@ html,body{background:#000;overflow:hidden;width:100vw;height:100vh;}
 <div id="wrap">
   <div id="blk-top"></div>
   <iframe id="player"
-    src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&playsinline=1&showinfo=0&origin=https://alledu.app"
+    src="https://www.youtube.com/embed/$videoId?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&playsinline=1&showinfo=0"
     allow="autoplay; encrypted-media; fullscreen" allowfullscreen>
   </iframe>
   <div id="blk-bot"></div>
@@ -344,7 +344,7 @@ html,body{background:#000;overflow:hidden;width:100vw;height:100vh;}
 <div id="wrap">
   <div id="blk-top"></div>
   <iframe id="player"
-    src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=0&mute=0&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&playsinline=1&showinfo=0&origin=https://alledu.app"
+    src="https://www.youtube.com/embed/$videoId?autoplay=0&mute=0&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&playsinline=1&showinfo=0"
     allow="autoplay; encrypted-media; fullscreen" allowfullscreen>
   </iframe>
   <div id="blk-bot"></div>

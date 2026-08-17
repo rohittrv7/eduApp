@@ -114,6 +114,20 @@ export class RecordedVideosController {
     return this.watchSessionsService.upsertWatchSession(user.id, id, dto);
   }
 
+  @Post(':id/progress')
+  @Roles(UserRole.STUDENT)
+  saveProgress(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: any,
+    @Body() dto: { position: number; duration?: number; watchTimeSecs?: number },
+  ) {
+    return this.watchSessionsService.upsertWatchSession(user.id, id, {
+      watch_time_secs: dto.watchTimeSecs ?? 10,
+      last_position: dto.position ?? 0,
+      duration_seconds: dto.duration,
+    });
+  }
+
   @Get(':id/watch-session')
   @Roles(UserRole.STUDENT)
   getWatchSession(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {

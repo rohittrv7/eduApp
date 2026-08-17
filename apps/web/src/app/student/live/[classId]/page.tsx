@@ -17,6 +17,7 @@ export default function StudentLiveClassPage() {
   useEffect(() => {
     if (!classId) return;
     let cancelled = false;
+    let isInitialLoad = true;
 
     async function load() {
       try {
@@ -26,9 +27,9 @@ export default function StudentLiveClassPage() {
         const raw = res.data;
 
         // 2. Get play token → resolve to youtubeVideoId (secure, server-verified)
-        let youtubeVideoId: string | undefined;
+        let youtubeVideoId: string | undefined = liveClass?.youtubeVideoId;
         const status = raw.status;
-        if (status === 'active' || status === 'ended') {
+        if (!youtubeVideoId && (status === 'active' || status === 'ended')) {
           try {
             const tokenRes = await apiClient.post(`/live-classes/${classId}/play-token`);
             const resolveRes = await apiClient.post(`/live-classes/${classId}/resolve-token`, {
@@ -48,11 +49,20 @@ export default function StudentLiveClassPage() {
           scheduledAt: raw.scheduled_at ?? raw.scheduledAt ?? '',
           youtubeVideoId,
         };
-        setLiveClass(data);
+        setLiveClass((prev) => ({
+          ...data,
+          youtubeVideoId: youtubeVideoId ?? prev?.youtubeVideoId,
+        }));
       } catch {
-        if (!cancelled) setError(true);
+        // Only show full error screen on initial load failure, not on periodic poll glitch
+        if (!cancelled && isInitialLoad) {
+          setError(true);
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && isInitialLoad) {
+          setLoading(false);
+          isInitialLoad = false;
+        }
       }
     }
 
